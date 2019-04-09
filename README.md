@@ -41,8 +41,8 @@ Software in this repository implements a subset of current OMAF version 1 standa
   * Spherical region-wise quality ranking (SRQR)
 * Creation of a single OMAF mp4 file with 72 video tracks for local playback (no streaming)
 * Creation of DASH manifests (MPD) and media segments for streaming:
-  * *urn:mpeg:dash:profile:isoff-live:2011* static MPD with *SegmentTemplate*
-  * *urn:mpeg:dash:profile:isoff-on-demand:2011* static MPD with *sidx*
+  * `urn:mpeg:dash:profile:isoff-live:2011` static MPD with *SegmentTemplate*
+  * `urn:mpeg:dash:profile:isoff-on-demand:2011` static MPD with *sidx*
   * Preselection Descriptor for *extractor track* Adaptation Sets
 * Support for guardbands
 * Supported platforms:

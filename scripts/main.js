@@ -158,9 +158,7 @@ app.controller('OMAFController', function ($scope, manifests){
   $scope.version = $scope.player.getVersion();
   
   $scope.selectedMPD = { 
-    //url: 'please select DASH Manifest (MPD) or provide it\'s URL in this field'
-    //url: 'http://127.0.0.1:5500/omaf_content/Debug.mpd'
-    url: 'http://172.17.22.187/omaf_content/nokia/Garage_debug/Garage_6K_30fps_GOP9_QP27_QP33_debug.mpd'
+    url: 'please select DASH Manifest (MPD) or provide it\'s URL in this field'
   };
 
   manifests.query(function (data) { $scope.availableMPDs = data.mpds; });
