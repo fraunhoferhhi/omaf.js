@@ -24,6 +24,9 @@ appear in the conference. The submitted version of the paper (not camera ready y
         primaryClass={cs.MM}
     }
 
+To see the JavaScript Player in action you can watch our MMSys demo video here:
+[![See omaf.js in action](https://img.youtube.com/vi/FpQiF8YEfY4/0.jpg)](https://youtu.be/FpQiF8YEfY4)
+
 We ask everyone who is interested in OMAF to test the implementation and report issues if you find things which can be improved.
 
 Thank you!
@@ -72,7 +75,7 @@ Software in this repository implements a subset of current OMAF version 1 standa
 
 ## 1. JavaScript Player documentation
 
-The JavaScript player implementation was tested on Safari browser with support of HEVC video through HTML5 Media Source Extensions API. In addition, the WebGL API is used for rendering, using region-wise packing metadata defined in OMAF. To see the JavaScript Player in action you can watch our MMSys [video clip](https://datacloud.hhi.fraunhofer.de/nextcloud/s/7MMwRzbYDWgSLBG).
+The JavaScript player implementation was tested on Safari browser with support of HEVC video through HTML5 Media Source Extensions API. In addition, the WebGL API is used for rendering, using region-wise packing metadata defined in OMAF.
 
 A general overview of the main components involved in our implementation is depicted in the following figure. It consists of six main modules which interact with each other and together provide a fully functional player for OMAF  360-degree video. Those modules are: **Player**, Downloader (**DL**), MPD Parser (**MP**), Scheduler (**SE**), Media Engine (**ME**) and finally the Renderer (**RE**).
 
