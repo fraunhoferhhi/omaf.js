@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>ME test</title>
+
+    <link rel="stylesheet" href="lib/bootstrap/css/bootstrap.min.css">
+    <script src="lib/jquery/jquery-3.2.1.slim.min.js"></script>
+    <script src="lib/bootstrap/js/popper.min.js"></script>
+    <script src="lib/bootstrap/js/bootstrap.min.js"></script> 
+    <script src="lib/mp4boxjs/mp4box.all.min.js"></script>
+    <script src="lib/threejs/three.min.js"></script>
+    <!-- required scripts for ME testing -->
+    <script src="scripts/queue.js"></script>
+    <script src="scripts/mediaengine.js"></script>
+    <script src="scripts/mpdparser.js"></script>
+    <script src="scripts/fetcher.js"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="text-center">
+            <h2>A simple testpage for ME module</h2>
+        </div>
+
+        <!-- LOAD MPD -->
+        <div class="row">
+            <div class="input-group mb-3">
+                <input type="text" class="form-control" id="inputMPD">
+                <div class="input-group-append" id="button-addon4">
+                    <button class="btn btn-outline-secondary" type="button" id="btnLoad">Load MPD</button>
+                </div>
+                <div class="input-group-append" id="button-addon4">
+                    <button class="btn btn-outline-secondary" type="button" id="btnNext">Load next segment</button>
+                </div>
+            </div>
+        </div> 
+
+        <div class="row">
+            <div class="col-md-6 text-center">
+                <video id="video1" controls style="width: 400px"></video>
+            </div>
+            <div class="col-md-6 text-center">
+                <video id="video2" controls style="width: 400px"></video>
+            </div>
+        </div>
+        <div id="dl_area">
+        </div>
+    </div>
+
+    <script>
+        // we don't care and just put all we need for testing into window.omaf ;)
+        window.omaf = {};
+        (function() {
+            let self = window.omaf;
+            self.segmentNr = 0;
+            self.initDownloaded = false;
+
+            // logging setup
+            window.logLevel = Log.debug;
+            Log.setLogLevel(window.logLevel);
+            Log.info("main", "init modules");
+
+            // get video elements
+            self.video1 = document.querySelector('#video1');
+            self.video2 = document.querySelector('#video2');
+
+            // create modules
+            self.MP = new MPDParser();
+            self.ME = new MediaEngine();
+            self.DL = new Fetcher();
+
+            // connect modules
+            self.DL.onManifestLoaded = function (mpd) { self.MP.init(mpd); }
+            self.DL.onInitLoaded = function (data) { 
+                self.ME.init(self.video1, self.video2, self.MP.getMimeType(), self.lastSegNum, data); 
+            }
+            self.DL.onMediaLoaded = function (data, segNum) { self.ME.processMedia(data, segNum); }
+            self.MP.onInit = function () {
+                let initURLs = self.MP.getVPinitSegURLs();
+                self.lastSegNum = parseInt(self.MP.getLastSegmentNr());
+                self.segmentNr = self.MP.getFirstSegmentNr();
+                Log.info("main", "Fetch init urls");
+                self.DL.loadInitSegments(initURLs);
+            }
+            self.ME.onInit = function () { Log.info("main", "ME initialized"); }
+            self.ME.onSwitchGeometry = function(trackID, isSub) {}
+            self.ME.onMediaProcessed = function () {
+                Log.warn("main", "segment repackaged");
+
+                // add download link for repackaged init segment
+                if( !self.initDownloaded ){
+                    let initSeg = self.ME.getInitSegment();
+                    let b = new Blob([initSeg], {type: 'application/octet-stream'});
+                    let link = document.createElement('a');
+                    link.setAttribute('download', 'init.mp4');
+                    link.innerHTML = "init.mp4";
+                    link.href = window.URL.createObjectURL(b);
+                    let dl_area = document.querySelector('#dl_area');
+                    dl_area.appendChild(link);
+                    dl_area.appendChild(document.createElement('br'));
+                    self.initDownloaded = true;
+                }
+
+                // add download link for repackaged media segment    
+                let mediaSeg = self.ME.getLastMediaSegment();
+                let b = new Blob([mediaSeg], {type: 'application/octet-stream'});
+                let link = document.createElement('a');
+                link.setAttribute('download', 'media_' + (self.segmentNr-1)+ '.mp4');
+                link.innerHTML = 'media_' + (self.segmentNr-1) + '.mp4 '
+                link.href = window.URL.createObjectURL(b);
+                let dl_area = document.querySelector('#dl_area');
+                dl_area.appendChild(link);
+                dl_area.appendChild(document.createElement('br'));
+            }
+
+            // todo: remove this after debugging
+            let mpdselect = document.querySelector('#inputMPD');
+            // http://172.17.22.187/omaf_content/HHIenc/Trolley_gb2/dash/Trolley_live.mpd
+            mpdselect.value = "http://172.17.22.187/omaf_content/nokia/Broadway_GOP9_QP27_OMAF_Files/Broadway_6144x3072_60fps_GOP9_QP27.mpd";
+
+            // set up HTML controls
+            let btnLoad = document.querySelector('#btnLoad');
+            let btnNext = document.querySelector('#btnNext');
+            btnLoad.addEventListener("click", () => {
+                let mpdselect = document.querySelector('#inputMPD');
+                self.DL.loadManifest(mpdselect.value);
+            });
+            btnNext.addEventListener("click", () => {
+                Log.info("main", "load next segment");
+
+                let asID = self.MP.getASIDfromYawPitch(0, 0);
+                self.trackID = self.ME.getTrackIDFromASID(asID);
+
+                Log.info("main", "selected asID / trackID = " + asID + " / " + self.trackID);
+
+                self.ME.setActiveTrackID(self.trackID, self.segmentNr)
+
+                let mediaURLs = self.MP.getMediaRequestsSimple(0, 0, self.segmentNr);
+
+                self.DL.loadMediaSegments(mediaURLs, self.segmentNr++);
+            });
+        })();
+        </script>
+</body>
+</html>

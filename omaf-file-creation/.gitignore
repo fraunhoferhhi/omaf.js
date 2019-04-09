@@ -1,0 +1,5 @@
+*.mp4
+*.mpd
+*.yuv
+*.265
+.DS_Store

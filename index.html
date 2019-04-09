@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>OMAF JavaScript Player</title>
+
+    <!-- meta -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, height=device-height">
+    <link rel="manifest" href="site.webmanifest">
+
+    <!-- icons -->
+    <link rel="apple-touch-icon" sizes="180x180" href="img/favicon_io/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="img/favicon_io/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="img/favicon_io/favicon-16x16.png">
+
+    <!-- styles  -->
+    <link rel="stylesheet" href="lib/bootstrap/css/bootstrap.min.css">
+    <link rel="stylesheet" href="lib/font-awesome/css/font-awesome.min.css">
+    <link rel="stylesheet" href="css/main.css">
+
+    <!-- libraries -->
+    <script src="lib/jquery/jquery-3.2.1.slim.min.js"></script>
+    <script src="lib/bootstrap/js/popper.min.js"></script>
+    <script src="lib/bootstrap/js/bootstrap.min.js"></script> 
+    <script src="lib/angular/angular.min.js"></script>
+    <script src="lib/angular/angular-resource.min.js"></script>
+    <script src="lib/angular/angular-flot.js"></script>
+    <script src="lib/threejs/three.min.js"></script>
+    <script src="lib/threejs/OrbitControls.js"></script>
+    <script src="lib/threejs/WebGL.js"></script>
+    <script src="lib/threejs/stats.min.js"></script>
+    <script src="lib/mp4boxjs/mp4box.all.min.js"></script>
+    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+    <script async defer src="https://buttons.github.io/buttons.js"></script>
+
+    <!-- OMAF Player Scripts -->
+    <script src="scripts/renderer.js"></script>
+    <script src="scripts/mediaengine.js"></script>
+    <script src="scripts/mpdparser.js"></script>
+    <script src="scripts/fetcher.js"></script>
+    <script src="scripts/queue.js"></script>
+    <script src="scripts/omafplayer.js"></script>
+    <script src="scripts/main.js"></script>
+    <script src="scripts/scheduler.js"></script>
+</head>
+
+<body ng-app="OMAFPlayer" ng-controller="OMAFController" >  
+    <div class="container">
+
+        <!-- HEADER: logo, product name & version -->
+        <div class="row page-header">
+            <div class="col-lg-8"> 
+                <a href="https://www.hhi.fraunhofer.de/en.html" target="_blank"><img class="image" src="img/hhi_logo_en.svg"/></a>
+                <span id="page-title">OMAF JavaScript Player</span>
+                <span id="player-version" ng-bind="version"></span>
+            </div>
+            <div class="col-lg-4 text-right">
+                <div class="github-stuff">
+                    <a class="github-button" href="https://github.com/fraunhoferhhi/omaf.js/fork" data-size="large" aria-label="Fork fraunhoferhhi/omaf.js on GitHub">Fork</a>
+                    <a class="github-button" href="https://github.com/fraunhoferhhi/omaf.js" data-icon="octicon-star" data-size="large" aria-label="Star fraunhoferhhi/omaf.js on GitHub">Star</a>
+                    <a class="github-button" href="https://github.com/fraunhoferhhi/omaf.js/issues" data-icon="octicon-issue-opened" data-size="large" aria-label="Issue fraunhoferhhi/omaf.js on GitHub">Report issue</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- LOAD MPD -->
+        <div class="row">
+            <div class="input-group mb-3">
+                <div class="input-group-prepend">
+                <div class="dropdown">
+                    <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-toggle="dropdown">MPD<span class="caret"></span></button>
+                    <ul class="dropdown-menu">
+                        <a class="dropdown-item" ng-repeat="mpd in availableMPDs" href="#" ng-click="setMPD(mpd)">{{mpd.name}}</a>
+                    </ul>
+                </div>
+                </div>
+                <input type="text" class="form-control" ng-model="selectedMPD.url">
+                <div class="input-group-append" id="button-addon4">
+                    <button class="btn btn-outline-secondary" type="button" ng-click="doLoad()">Load</button>
+                </div>
+            </div>
+        </div>  
+
+        <!-- PLAYER & STATS -->
+        <div class="row">
+            <!-- player -->
+            <div class="col-xl-9 omaf-player">
+                <div id="videobox">
+                    <img id="fraunhofer_curtain" src="img/hhi_logo_en.svg"/>
+                    <canvas id="renderingSurface"></canvas>
+                    <canvas id="subRenderingSurface"></canvas>
+                    <video id="video1" ></video>
+                    <video id="video2" ></video>
+                </div>
+               
+                <div id="videoController" class="video-controller">
+                    <!-- https://www.w3schools.com/icons/fontawesome_icons_video.asp -->
+                    <div id="playPauseBtn" class="btn-play" data-toggle="tooltip" data-placement="bottom" title="Play" ng-click="doPlayPause()">
+                        <span id="iconPlayPause" class="fa fa-play"></span>
+                    </div>
+                    <span id="videoTime" class="time-display"></span>
+                    <div id="fullscreenBtn" class="btn-fullscreen" data-toggle="tooltip" data-placement="bottom" title="Fullscreen" ng-click="doFullscreen()">
+                        <span id="iconFullscreen" class="fa fa-arrows-alt"></span>
+                    </div>
+                    <div id="repeatBtn" class="btn-repeat" data-toggle="tooltip" data-placement="bottom" title="Repeat" >
+                            <span id="iconRepeat" class="fa fa-repeat" ng-click="doLoop($event)"></span>
+                    </div>
+                </div>
+            </div>
+           
+            <!-- stats and options -->
+            <div class="col-xl-3 tabs-section" id="myOptionsContent">
+                <ul class="nav nav-pills" id="myTab" role="tablist">
+                    <li class="nav-item fraunhofer">
+                        <a class="nav-link active" id="nav-options-tab" data-toggle="tab" href="#nav-options" role="tab" aria-controls="nav-options" aria-selected="true">Options</a>
+                    </li>
+                    <li class="nav-item fraunhofer">
+                        <a class="nav-link" id="nav-home-tab" data-toggle="tab" href="#nav-home" role="tab" aria-controls="nav-home" aria-selected="false">VR</a>
+                    </li>
+                    <li class="nav-item fraunhofer">
+                        <a class="nav-link" id="nav-videoStats-tab" data-toggle="tab" href="#nav-videoStats" role="tab" aria-controls="nav-videoStats" aria-selected="false">Video</a>
+                    </li>
+                </ul>
+                <div class="tab-content" id="myTabContent">
+                    <div class="tab-pane fade show active" id="nav-options" role="tabpanel" aria-labelledby="nav-options-tab">
+                        <div class="form-group row">
+                            <label class="col-6 col-form-label text-primary" for="logLevelSelect" title="Logging level">Log level:</label>
+                            <div class="col-6">
+                                <select class="form-control" id="logLevelSelect">
+                                    <option value="error">error</option>
+                                    <option value="warn">warn</option>
+                                    <option value="info">info</option>
+                                    <option value="debug">debug</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label class="col-6 col-form-label text-primary" for="inputBufferLimit" title="Buffer limit time in milliseconds">Buffer lim:</label>
+                            <div class="col-6">
+                                <input class="form-control" id = "inputBufferLimit" type="number" value="1500" min="0">
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label class="col-6 col-form-label text-primary" for="inputMetricsUpdate" title="Metrics update interval">Metrics int:</label>
+                            <div class="col-6">
+                                <input class="form-control" id="inputMetricsUpdate" type="number" min="1000" value="2000">
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label class="col-6 col-form-label text-primary" for="inputChartWindow" title="Moving window size for chart data">Chart win.:</label>
+                            <div class="col-6">
+                                <input class="form-control" id="inputChartWindow" type="number" min="10" max="500" value="10">
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label class="col-7 col-form-label text-primary" for="renderDebug" title="Render debug information">Render info:</label>
+                            <div class="col-5">
+                                <input class="form-check-input" type="checkbox" value="" id="renderDebug">
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label class="col-7 col-form-label text-primary" for="trackSwitchActivation" title="Dynamic track switching based on viewport orientation.">Track switch:</label>
+                            <div class="col-5">
+                                <input class="form-check-input" type="checkbox" value="" id="trackSwitchActivation" checked="true">
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label class="col-7 col-form-label text-primary" for="renderStats" title="Render debug statistics"></label>
+                            <div class="col-5" id="statsDiv">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="tab-pane fade" id="nav-home" role="tabpanel" aria-labelledby="nav-home-tab">
+                        <div class="form-group row">
+                            <label class="col-6 col-form-label text-primary" title="Yaw in degrees">Yaw:</label>
+                            <div class="col-6">
+                                <span class="form-control">{{yaw}}</span>
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label class="col-6 col-form-label text-primary" title="Pitch in degrees">Pitch:</label> 
+                            <div class="col-6">
+                                <span class="form-control">{{pitch}}</span>
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label class="col-6 col-form-label text-primary" title="Track ID">TrackID:</label> 
+                            <div class="col-6">
+                                <span class="form-control">{{trackID}}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="tab-pane fade" id="nav-videoStats" role="tabpanel" aria-labelledby="nav-videoStats-tab">
+                        <div class="form-group row">
+                            <label class="col-6 col-form-label text-primary" title="Current segment number">SegNr.:</label>
+                            <div class="col-6">
+                                <span class="form-control">{{segNr}}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div> 
+        </div>
+
+        <!-- CHARTING -->
+        <div class="col-md-12 chart">
+            <div id="chart_div"></div>
+        </div>
+    </div>
+
+    <!-- FOOTER -->
+    <div class="footer" ng-cloak>
+        <div class="container">
+            <div class="row">
+                <div class="col-md-12">
+                    <h4>Technologies:</h4>
+                    <a href="https://mpeg.chiariglione.org/standards/mpeg-i/omnidirectional-media-format" target="_blank"><img class="image" src="img/mpeg.png"/></a>
+                    <a href="https://www.hhi.fraunhofer.de/en/departments/vca/research-groups/multimedia-communications/research-topics/mpeg-omaf.html" target="_blank"><img class="image" src="img/omaf.png"/></a>
+                    <a href="https://hevc.hhi.fraunhofer.de/" target="_blank"><img class="image" src="img/hevc.png"/></a>
+                    <a href="https://dashif.org/" target="_blank"><img class="image" src="img/dash-if.png"/></a>
+                    <a href="https://www.vr-if.org/" target="_blank"><img class="image" src="img/vr-if.png"/></a>
+                </div>
+            </div>
+            <div class="row footer-text">
+                <span>&copy; Copyright  1995 - 2019 Fraunhofer-Gesellschaft zur Förderung der angewandten Forschung e.V. All rights reserved.</span>
+                <a href="LICENSE.txt">view license</a>
+            </div>
+        </div> 
+    </div>
+
+    <!-- Modal -->
+    <div class="modal fade" id="warningPopup" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                <h5 class="modal-title" id="exampleModalLongTitle">OMAFBrowser</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+                </div>
+                <div class="modal-body">
+                    <p id=modalMessage></p>
+                </div>
+                <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

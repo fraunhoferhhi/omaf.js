@@ -1,0 +1,6 @@
+{
+  "mpds": [{
+    "name": "Add your MPD description here,",
+    "url": "https://yourserver/dash/GarageDebug_live.mpd"
+  }]
+}

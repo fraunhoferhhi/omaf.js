@@ -1,0 +1,209 @@
+body {
+    background: #fff;
+    min-width: 320px;
+    overflow-x: hidden;
+}
+.page-header {
+    padding-top: 10px;
+    padding-bottom: 10px;
+}
+.page-header span {
+    font-size: 26px;
+    line-height: 50px;
+    padding-left: 5px;
+}
+#page-title {
+    padding-left: 30px;
+}
+
+.github-stuff {
+    margin-top: -20px;
+}
+
+.input-group {
+    position: relative;
+    border-collapse: separate;
+}
+
+.row {
+    margin-bottom: 7px;
+    margin-right: 0px;
+    margin-left: 0px;
+}
+
+.omaf-player {
+    background-color: #000;
+}
+
+#debug {
+    border: solid 1px #ff009d;
+}
+
+#fraunhofer_curtain {
+    position: absolute;
+    margin: auto;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 80%;
+} 
+
+.col-xl-9 {
+    padding-top: 15px;
+}
+
+@media (max-width: 1200px) {
+    #page-title, #player-version{
+        font-size: 20px;
+    }
+}
+@media (max-width: 768px) {
+    #page-title{
+        display: none;
+    }
+}
+/* get rid of github buttons on small screens */
+@media (max-width: 992px) {
+    .github-stuff {
+        display: none;
+    }
+}
+
+#videobox {
+    width: 100%;
+    height: auto;
+    background-color: #eee;
+    position: relative;
+}
+
+#renderingSurface {
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 10; 
+}
+#subRenderingSurface {
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 8; 
+}
+
+video {
+    visibility: hidden;
+    width: 50%;
+    height: auto;
+}
+
+#myTabContent {
+    margin-top: 7px;
+}
+
+/* option buttons color */
+.nav-pills .fraunhofer .nav-link:not(.active) {
+    background-color: #fff;
+    color: black;
+}
+.nav-pills .fraunhofer .nav-link {
+    background-color: rgba(24, 156, 125, 1);
+    color: white;
+}
+
+.btn-outline-secondary {
+    background-color: rgba(24, 156, 125, 1);
+    color: white;
+}
+
+.chart {
+    margin-bottom: 20px;
+    width: 100%;
+}
+
+/* footer stuff */
+.footer{
+    background-color: white;
+}
+.footer h4{
+    height: 50px;
+    /* color: #bbb; */
+    margin-top: 20px;
+}
+.footer img{
+    height: 70px;
+    width: auto;
+}
+.footer a {
+    margin: 20px 35px;
+    display: inline-block;
+}
+.footer-text {
+    font-size: 12px;
+    float: right;
+}
+.footer-text a {
+    margin: 0px 5px;
+    display: inline-block;
+}
+
+/*******************
+*** Video controls 
+********************/
+.btn-play {
+    float: left;
+    padding: 9px 10px;
+    cursor: pointer;
+}
+#iconPlayPause,
+#iconRepeat,
+#iconFullscreen{
+    font-size: 20px;
+    color: white
+}
+
+.time-display {
+    float: left;
+    padding: 11px;
+    color: white;
+    font-weight: normal;
+    font-size: .9em;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+
+.btn-repeat {
+    float: right;
+    padding: 9px 10px;
+    cursor: pointer;
+}
+
+.btn-fullscreen {
+    float: right;
+    padding: 9px 10px;
+    cursor: pointer;
+}
+
+video::-webkit-media-controls {
+    display:none !important;
+}
+video::-webkit-media-controls-enclosure {
+    display:none !important;
+}
+video::-webkit-media-controls-fullscreen-button {
+    display:none !important;
+}
+
+.video-controller-fullscreen {
+    position: fixed;
+    z-index:2147483647;
+    width: 100%;
+    bottom: 0;
+    left: 0;
+}
+
+.hide{
+    display: none;
+}
