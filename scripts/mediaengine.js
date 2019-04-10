@@ -74,6 +74,8 @@ function MediaEngine() {
     this.isLastBuf      = false;
     this.isReset        = false;
     this.isRemoveBuf    = false;
+    this.isOnEdge       = false;
+   
     
     this.initialized    = false;
     this.MSEinitialized = false;    // this is true if we sucessfully inserted repackaged moov and sourceBuffer is ready to go
@@ -103,7 +105,7 @@ function MediaEngine() {
     this.mediaSource    = null;
     this.subMediaSource = null;
     this.sourceBuffer   = null;
-    this.subSourceBuffer   = null;
+    this.subSourceBuffer   = null;  
     this.updateBuffer   = [];
     this.subUpdateBuffer   = [];
     this.manageBufferQ  = new Queue();
@@ -216,7 +218,11 @@ MediaEngine.prototype.getLastMediaSegment = function() {
 }
 
 // this creates arrayOfMoovs.length number of mp4box objects parses them and destroys them
-MediaEngine.prototype.init = function (vidElement, subVidElement, mimeType, lastSegNum, dataAndASIDs) {
+MediaEngine.prototype.init = function (vidElement, subVidElement, mimeType, lastSegNum, isOnEdge, dataAndASIDs) {
+    var arrayOfMoovs = dataAndASIDs.data;
+    var asIDs = dataAndASIDs.asIDs;
+    var self = this;
+
     if (this.initialized){
         Log.warn("ME", "MediaEngine was already initialized.");
         return;
@@ -231,6 +237,7 @@ MediaEngine.prototype.init = function (vidElement, subVidElement, mimeType, last
     this.subVidElement = subVidElement
     this.mimeType = mimeType;
     this.lastSegNum = lastSegNum;
+    this.isOnEdge = isOnEdge;
     if (window.MediaSource) {
         this.mediaSource = new MediaSource();
         this.subMediaSource = new MediaSource();
@@ -327,6 +334,7 @@ MediaEngine.prototype.initMSE = function(){
             this.sourceBuffer.addEventListener('updateend', function (e) {
                 Log.debug("ME", "sourceBuffer append or remove has ended");
 
+                
                 if (!self.MSEinitialized){
                     Log.warn("ME", "sourceBuffer first updateend call. Init segment inserted");
                     self.MSEinitialized = true;
@@ -346,6 +354,10 @@ MediaEngine.prototype.initMSE = function(){
                             self.isRemoveBuf = false;
                         }
                     }
+                }
+                
+                if(self.isLastBuf && !self.updateBuffer.length && self.isOnEdge){
+                    self.mediaSource.endOfStream();
                 }
                 if ( self.updateBuffer.length ) {
                     self.sourceBuffer.appendBuffer(self.updateBuffer.shift());
@@ -426,6 +438,7 @@ MediaEngine.prototype.initSubMSE = function(){
                 if ( self.subUpdateBuffer.length ) {
                     self.subSourceBuffer.appendBuffer(self.subUpdateBuffer.shift());
                 }
+                
                
             }, false);
         }
@@ -751,8 +764,8 @@ MediaEngine.prototype.checkBufQ = function(){
             var trackID = self.manageBufferQ.front().trackID;
             //Log.warn("checkBufQ", segNum);
             if(!isSubBuf ){
-                Log.warn("checkBufQ main", segNum);
-                if(segNum == 1 && !self.isReset){
+                //Log.warn("checkBufQ main", segNum);
+                if(segNum <= 1 && !self.isReset){
                     self.subVidElement.pause();
                     if(!self.subSourceBuffer.updating){
                         self.subSourceBuffer.appendBuffer(mediaData);
@@ -1093,7 +1106,9 @@ ISOFile.prototype.getRepackagedMoov = function(){
     moov.mvhd = this.moov.mvhd;
     moov.mvhd.next_track_id = 2; // trackID will be always 1. so the nextTrackID = 2
     moov.boxes.push(moov.mvhd);
+
     
+    console.log(moov);    
     var trak = null;
     // get first 'hvc2' track
     for (var j = 0; j < this.moov.traks.length; j++) {

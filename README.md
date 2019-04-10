@@ -56,7 +56,10 @@ Software in this repository implements a subset of current OMAF version 1 standa
 ### JavaScript Player for HEVC-based viewport-dependent OMAF video profile with MCTS (HEVC Tiles)
 
 * Fully tested on Safari 12.02 (macOS)
-* For more infos on Microsoft Edge browser, please check out `edgebrowser` branch and read the documentation
+* Edge browser has issue such as: 
+  * It needs several seconds of buffer to start play [reference link](https://developer.microsoft.com/en-us/microsoft-edge/platform/issues/11147314/)
+  * In the Edge browser, the player has to prepare several seconds of buffer every time when track is changed
+  * For this reason, The player playing in the edge browser uses only one track.
 * Viewport-dependent streaming for static DASH MPD with *SegmentTemplate*
 * HTML5 video element with MSE is used for decoding of the media segments
   * JavaScript repackaging to a single *hvc1* track for MSE

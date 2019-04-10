@@ -63,17 +63,17 @@ omaf@hhi.fraunhofer.de
 ----------------------------------------------------------------------------- */
 
 function OMAFPlayer () {
-    this.version        = "0.1.0"; // change it every time we push to master or create a new tag
+    this.version        = "0.2.2"; // change it every time we push to master or create a new tag
 
     this.initialized    = false;
     this.isOninit       = false;
     this.isOnLoop       = true;
     this.isLastBuf      = false;
     this.isReset        = false;
-    this.isOnMainVid    = true;
+    this.isOnMainVid    = true; 
     this.isFirstSwitch  = false;
-    this.isTrackSwitch  = false;
-    this.isEnterFullscreen = false;
+    this.isOnEdge       = false;
+    
 
     this.MP = null; // Manifest Parser
     this.ME = null; // Media Engine
@@ -145,7 +145,7 @@ OMAFPlayer.prototype.init = function(vidElement, subVidElement, renderElement, s
 
     Log.info("Player", "init OMAF Player");
     
-    self.bufferLimitTime = parseInt(bufferLimit);
+    this.bufferLimitTime = parseInt(bufferLimit);
 
     this.vidElement = vidElement;
     this.subVidElement = subVidElement;
@@ -155,6 +155,16 @@ OMAFPlayer.prototype.init = function(vidElement, subVidElement, renderElement, s
     this.cameraElement = cameraElement;
     this.renderElement.style.zIndex = "10";
     this.subRenderElement.style.zIndex = "8";
+  
+    if (/Edge/.test(navigator.userAgent)) {
+        $("#modalMessage").html("Edge browser can't switch track. <br>For more details, You can refer to README.md");
+        $("#warningPopup").modal();
+        this.bufferLimitTime = 4000;
+        this.isOnEdge = true;
+        this.vidElement.loop = true;
+    }
+   
+    
     this.SE.activeVideoElement = function(active, segNum) {
         
         this.activeBuffer = active;
@@ -191,8 +201,7 @@ OMAFPlayer.prototype.init = function(vidElement, subVidElement, renderElement, s
     });
 
     this.vidElement.onpause = function() {
-        if(self.isPlaying && self.isEnterFullscreen ){
-            self.isEnterFullscreen = false;
+        if(self.isPlaying && !self.isOnEdge){
             var timeDif = 100;
             var preVidTime = parseInt(self.vidElement.currentTime * 1000);
             if(self.isOnMainVid){
@@ -208,9 +217,7 @@ OMAFPlayer.prototype.init = function(vidElement, subVidElement, renderElement, s
     }
 
     this.subVidElement.onpause = function() {
-        
-        if(self.isPlaying && self.isEnterFullscreen){
-            self.isEnterFullscreen = false;
+        if(self.isPlaying && !self.isOnEdge){
             var timeDif = 100;
             var preVidTime = parseInt(self.subVidElement.currentTime * 1000);
             if(!self.isOnMainVid){
@@ -223,42 +230,38 @@ OMAFPlayer.prototype.init = function(vidElement, subVidElement, renderElement, s
                 },timeDif);
             }
         }
+        
     }  
-    
     this.vidElement.onwaiting = function() {
-        if(self.vidElement.buffered.length){
+        if(self.vidElement.buffered.length && !self.isOnEdge){
             self.checkSubBuffer(self.vidElement.currentTime);
         }     
-    }
-
+    };
     this.vidElement.onended = function() {
-        if(self.vidElement.buffered.length){
-            self.checkSubBuffer(self.vidElement.currentTime);
+        
+        if(self.isOnLoop && self.isLastBuf && !self.isOnEdge){
+            self.segmentNr = 1;
+            self.bufferOffsetTime = 0;
+            self.RE.setIsAniPause(true);
+            self.ME.removeBuf(false, true);
+            self.ME.removeBuf(true, true);
+            self.ME.reset(true);
+            self.SE.activeVideoElement("MASTER",0);
+            self.isReset = true;
+            self.isLastBuf = false;
+            self.isOnMainVid = true;
         }
-        /*
-        if(self.isLastBuf){
-            if(self.isOnLoop){
-                self.segmentNr = 1;
-                self.bufferOffsetTime = 0;
-                self.RE.setIsAniPause(true);
-                self.ME.removeBuf(false, true);
-                self.ME.removeBuf(true, true);
-                self.ME.reset(true);
-                self.SE.activeVideoElement("MASTER",0);
-                self.isReset = true;
-                self.isLastBuf = false;
-                self.isOnMainVid = true;
-            }  
-        }else{
-            if(self.vidElement.buffered.length){
-                self.checkSubBuffer(self.vidElement.currentTime);
-            }
-        }
-        */
-    }
-
+        
+    };
     this.vidElement.oncanplay = function() {
-        if(self.isReset){
+
+        if(!self.readyInitRender && self.isOnEdge){
+            self.SE.activeVideoElement("MASTER",0);
+            self.RE.animate();
+            self.readyInitRender = true;
+            self.isOnMainVid = true;
+        }
+        if(self.isReset && !self.isOnEdge){
             clearInterval(self.mainBufReq);
             clearInterval(self.subBufReq);
             clearInterval(self.pauseReq);
@@ -273,37 +276,32 @@ OMAFPlayer.prototype.init = function(vidElement, subVidElement, renderElement, s
         }
         self.readyMainRender = true;
     }
-
     this.subVidElement.onwaiting = function() {
-        if(self.subVidElement.buffered.length){
+        if(self.subVidElement.buffered.length && !self.isOnEdge){
             self.checkMainBuffer(self.subVidElement.currentTime);
         }
-    }
-
+    };
     this.subVidElement.oncanplay = function() {
-        if(!self.readyInitRender){
+     
+        if(!self.readyInitRender && !self.isOnEdge){
             self.SE.activeVideoElement("MASTER",0);
             self.RE.animate();
-    
             self.ME.removeBuf(true, false);
             self.readyInitRender = true;
             self.isOnMainVid = true;
         }else{
             self.readySubRender = true;
         }
-    }
 
-    this.subVidElement.onended = function() {
-        if(self.subVidElement.buffered.length){
-            self.checkMainBuffer(self.subVidElement.currentTime);
-        }
-    }
+    };
+    
+
     
     this.videoController = document.getElementById('videoController');
 
     this.DL.onManifestLoaded = function (mpd) { self.MP.init(mpd); }
     this.DL.onInitLoaded = function (data) { 
-        self.ME.init(self.vidElement, self.subVidElement, self.MP.getMimeType(), self.lastSegNum, data); 
+        self.ME.init(self.vidElement, self.subVidElement, self.MP.getMimeType(), self.lastSegNum, self.isOnEdge, data); 
     }
     this.DL.onMediaLoaded = function (data, segNum) { self.ME.processMedia(data,segNum); }
 
@@ -359,6 +357,7 @@ OMAFPlayer.prototype.init = function(vidElement, subVidElement, renderElement, s
             self.subRenderElement.style.zIndex = "10";
         }
     }
+ 
 
     this.ME.onMediaProcessed = function () {
         // this is where whe know that sourceBuffer has received our stuff
@@ -489,6 +488,7 @@ OMAFPlayer.prototype.play = function(){
         return;
     }
     if(this.isOnMainVid){
+        Log.warn("isOnMainVid play");
         this.vidElement.play();
     }else{
         this.subVidElement.play();
@@ -499,6 +499,7 @@ OMAFPlayer.prototype.play = function(){
 
 OMAFPlayer.prototype.pause = function(){
     if(this.isOnMainVid){
+        Log.warn("isOnMainVid pause");
         this.vidElement.pause();
     }else{
         this.subVidElement.pause();
@@ -593,7 +594,7 @@ OMAFPlayer.prototype.loadNextSegment = function(){
         }
         this.RE.matchTracktoCube(this.trackID);
         this.RE.subMatchTracktoCube(this.trackID);
-    }else if(!this.isTrackSwitch){
+    }else if(this.isOnEdge){
         this.trackID = this.preTrackID;
         this.yaw = this.preYaw;
         this.pitch = this.prePitch;
@@ -775,8 +776,14 @@ OMAFPlayer.prototype.loop = function(element){
     if(this.isOnLoop){
         $(element).removeClass('fa-repeat').addClass('fa-long-arrow-right ');
         this.isOnLoop = false;
+        if(this.isOnEdge){
+            this.vidElement.loop = false;
+        }
     }else{
         $(element).removeClass('fa-long-arrow-right').addClass('fa-repeat ');
         this.isOnLoop = true;
+        if(this.isOnEdge){
+            this.vidElement.loop = true;
+        }
     }
 }
