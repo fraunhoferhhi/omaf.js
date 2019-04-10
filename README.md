@@ -25,7 +25,8 @@ appear in the conference. The submitted version of the paper (not camera ready y
     }
 
 To see the JavaScript Player in action you can watch our MMSys demo video here:
-[![See omaf.js in action](https://img.youtube.com/vi/FpQiF8YEfY4/0.jpg)](https://youtu.be/FpQiF8YEfY4)
+
+[![See omaf.js in action](img/yt_thumbnail.jpeg)](https://youtu.be/FpQiF8YEfY4)
 
 We ask everyone who is interested in OMAF to test the implementation and report issues if you find things which can be improved.
 
@@ -62,7 +63,8 @@ Software in this repository implements a subset of current OMAF version 1 standa
   * JavaScript repackaging to a single *hvc1* track for MSE
 * Rendering using webGL and [three.js](https://github.com/mrdoob/three.js/)
   * Cubemap projection
-  * RWPK as described in [content creation tools](./omaf-file-creation/README.md)
+  * Equirectangular projection
+  * RWPK (tested with [HHI content creation tools](./omaf-file-creation/README.md) and [Nokia OMAF Creator](https://github.com/nokiatech/omaf))
 * SRQR is supported to the extent needed for tile-based streaming
 * DASH Preselection descriptor is used to determine the depencencies between Adaptation Sets
 * `'rwpk'` box is used to correctly render the video texture of the corresponding *extractor track*
@@ -93,11 +95,11 @@ Before ME processes the segments each of the segments consist of multiple *hvc1*
 
 ### Rendering
 
-After the repackaged segment is processed by the MSE SourceBuffer, the browser decodes the video and the video texture is rendered by the RE module using OMAF metadata. Rendering is based on triangles and therefore one tile is represented by two triangular surfaces. Since the resolved image is composed of 12 high-quality tiles and 12 low-quality tiles, the RE constructs a total of 48 triangular surfaces which form a 3D cube. The figure below shows three main processes, from the resolved image to the cube, which are used for rendering.
+After the repackaged segment is processed by the MSE SourceBuffer, the browser decodes the video and the video texture is rendered by the RE module using OMAF region-wise packing metadata. Rendering module is using a fragment shader to unpack the regions. The figure below visualizes the rendering process based on an example of a CMP video with 12 high-quality tiles and 12 low-quality tiles:
 
 ![rendering](img/renderer.png "Rendering")
 
-The 48 triangular surfaces of the cube as depicted in figure (c) can be represented as a 2D plane like in figure (b). The RE uses OMAF metadata to render the resolved image correctly at the cube faces as shown in figure (b). The Region-wise Packing (RWPK) in the OMAF metadata has top-left packed and unpacked coordinates, width, height and rotation value of tiles for all tracks. Since the position and size of the cube faces are always the same, the image in figure (b) can be assumed to be an unpacked image. Therefore, the RE sets the rendering range of the figure (a) using the RWPK metadata, and renders the tiles of the resolved image to the cube faces of the figure (b). However, when there is a change in the viewport position, the RE has to set different metadata for the corresponding track. In the implementation, when the manifest file is loaded, the RE module is initialized with all RWPK metadata to correctly render all tracks.
+The 48 triangular surfaces of the cube as depicted in figure (c) can be represented as a 2D plane like in figure (b). The RE uses OMAF metadata to render the resolved image correctly at the cube faces as shown in figure (b). The Region-wise Packing (RWPK) in the OMAF metadata has top-left packed and unpacked coordinates, width, height and rotation value of tiles for all tracks. Since the position and size of the cube faces are always the same, the image in figure (b) can be assumed to be an unpacked image. Therefore, the RE sets the rendering range of the figure (a) using the RWPK metadata, and renders the tiles of the resolved image to the cube faces of the figure (b). However, when there is a change in the viewport position, the RE has to set different metadata for the corresponding track. In the implementation, when the manifest file is loaded, the RE module is initialized with all RWPK metadata to be prepared for all tracks.
 
 ## 2. Content Creation Tools (OMAF Generator)
 
