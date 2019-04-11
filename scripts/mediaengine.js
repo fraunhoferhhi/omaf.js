@@ -67,29 +67,21 @@ var logLevel = window.logLevel;
 function MediaEngine() {
     this.isBusy         = false;
     this.isInit         = false;
-    this.isSubInit      = false;
-    this.isSubBuffer    = false;
     this.isMainActive   = false;
-    this.isSubActive    = false;
     this.isLastBuf      = false;
     this.isReset        = false;
     this.isRemoveBuf    = false;
-    this.isOnEdge       = false;
-   
     
     this.initialized    = false;
     this.MSEinitialized = false;    // this is true if we sucessfully inserted repackaged moov and sourceBuffer is ready to go
-    this.subMSEinitialized = false;
     this.initSegments   = {};       // hvc2_trackID (Number): moov (ArrayBuffer), ...
     this.hvc2Infos      = {};       // hvc2_trackID (Number): mp4boxInfo (Object), ...
     this.asIDtoTrackID  = {};       // key = asID, value = trackID
 
     this.currentTrackID = null;     // hvc2_trackID which is selected for playback
-    this.switchTrackID  = null;
     this.currentSegNum  = 0;     // segment number which is selected for playback
     this.lastSegNum     = 0;
     this.mainBufSegNum  = 0; 
-    this.subBufSegNum   = 0;
     this.preSegNum      = 0;
     this.trackRefs      = null;     // track references (list of trackIDs currentTrackID depends on)
     this.currentMp4Box  = null;     // an active instance of mp4box.js
@@ -101,13 +93,9 @@ function MediaEngine() {
     
     // MSE stuff
     this.videoElement   = null;
-    this.subVidElement  = null;
     this.mediaSource    = null;
-    this.subMediaSource = null;
     this.sourceBuffer   = null;
-    this.subSourceBuffer   = null;  
     this.updateBuffer   = [];
-    this.subUpdateBuffer   = [];
     this.manageBufferQ  = new Queue();
     this.mimeType       = null;
     this.initSegmentData = null;    // contains a 'fake' moov box (init segment) for MSE
@@ -116,7 +104,6 @@ function MediaEngine() {
     // events
     this.onInit = null;             // this is called when everything is ready for MediaEngine to work
     this.onMediaProcessed = null;   // this is called when media segments are repackaged and processed by MSE
-    this.onSwitchTrack  = null;
     this.onFinish  = null;
     this.onReset  = null;
 
@@ -163,25 +150,15 @@ MediaEngine.prototype.setActiveTrackID = function(trackID, segNum){
 
    // this.resetActiveMp4Box(trackID);
     if(this.currentTrackID == null){ // only for first time
-        if(this.switchTrackID == null){ // To distinguish from reset
-            this.setInitsegmentData(trackID);
-            if(!this.sourceBuffer.updating){
-                this.sourceBuffer.appendBuffer(this.initSegmentData);
-            }else{
-                this.updateBuffer.push(this.initSegmentData);
-            }
-            if(!this.subSourceBuffer.updating){
-                this.subSourceBuffer.appendBuffer(this.initSegmentData);
-            }else{
-                this.subUpdateBuffer.push(this.initSegmentData);
-            }
+        this.setInitsegmentData(trackID);
+        if(!this.sourceBuffer.updating){
+            this.sourceBuffer.appendBuffer(this.initSegmentData);
+        }else{
+            this.updateBuffer.push(this.initSegmentData);
         }
-        this.switchTrackID = trackID;
         this.preSegNum  = 1;
     }
-    if(segNum == 1){
-        this.switchTrackID = trackID;
-    }
+   
     this.currentTrackID = trackID;
     this.trackRefs = this.getTrackReferences(trackID);
     return true;
@@ -218,7 +195,7 @@ MediaEngine.prototype.getLastMediaSegment = function() {
 }
 
 // this creates arrayOfMoovs.length number of mp4box objects parses them and destroys them
-MediaEngine.prototype.init = function (vidElement, subVidElement, mimeType, lastSegNum, isOnEdge, dataAndASIDs) {
+MediaEngine.prototype.init = function (vidElement, mimeType, lastSegNum,dataAndASIDs) {
     var arrayOfMoovs = dataAndASIDs.data;
     var asIDs = dataAndASIDs.asIDs;
     var self = this;
@@ -234,13 +211,10 @@ MediaEngine.prototype.init = function (vidElement, subVidElement, mimeType, last
     var self = this;
 
     this.videoElement = vidElement;
-    this.subVidElement = subVidElement
     this.mimeType = mimeType;
     this.lastSegNum = lastSegNum;
-    this.isOnEdge = isOnEdge;
     if (window.MediaSource) {
         this.mediaSource = new MediaSource();
-        this.subMediaSource = new MediaSource();
     } else {
         Log.error("ME", "The Media Source Extensions API is not supported.");
         $("#modalMessage").html("This device does not support Media Source Extensions API");
@@ -253,10 +227,7 @@ MediaEngine.prototype.init = function (vidElement, subVidElement, mimeType, last
         self.initMSE();
     });
 
-    this.subMediaSource.addEventListener('sourceopen', function (e) {
-        self.initSubMSE();
-    });
-
+   
     // create all mp4box objects and add moov's to each
     var tempMp4BoxHolder = [];
     Log.setLogLevel(Log.error); // shut up :D
@@ -301,7 +272,6 @@ MediaEngine.prototype.init = function (vidElement, subVidElement, mimeType, last
 
     // after this sourceopen event will be executed after some delay
     // make sure that mediaSource.addEventListener('sourceopen', ... is set in the main.js file
-    this.subVidElement.src = URL.createObjectURL(this.subMediaSource);
     this.videoElement.src = URL.createObjectURL(this.mediaSource);
 }
 
@@ -333,30 +303,12 @@ MediaEngine.prototype.initMSE = function(){
             
             this.sourceBuffer.addEventListener('updateend', function (e) {
                 Log.debug("ME", "sourceBuffer append or remove has ended");
-
-                
                 if (!self.MSEinitialized){
                     Log.warn("ME", "sourceBuffer first updateend call. Init segment inserted");
                     self.MSEinitialized = true;
                     
-                }else if(self.isReset){
-                    self.onReset();
-                    self.isRemoveBuf = false;
-                    self.isReset = false;
-                }else{
-                    if(self.isLastBuf && !self.updateBuffer.length){
-                        self.onFinish();
-                    }else{
-                        if(!self.isRemoveBuf){
-                            //self.onMediaProcessed();
-                        }else{
-                            self.isMainActive = false;
-                            self.isRemoveBuf = false;
-                        }
-                    }
                 }
-                
-                if(self.isLastBuf && !self.updateBuffer.length && self.isOnEdge){
+                if(self.isLastBuf && !self.updateBuffer.length){
                     self.mediaSource.endOfStream();
                 }
                 if ( self.updateBuffer.length ) {
@@ -378,89 +330,13 @@ MediaEngine.prototype.initMSE = function(){
         if (this.onInit == null) {
             Log.warn("ME", "OnInit callback not set");
         }
-        else if(this.isInit && this.isSubInit && !this.initialized){
+        else if(this.isInit && !this.initialized){
             this.initialized = true;
             this.onInit();
         }   
     }
 }
 
-MediaEngine.prototype.initSubMSE = function(){
-    URL.revokeObjectURL(this.subVidElement.src);
-    try{
-        this.subSourceBuffer = this.subMediaSource.addSourceBuffer(this.mimeType);
-        if (typeof this.subSourceBuffer.addEventListener === 'function') {
-            Log.info("ME", "set up subSourceBuffer event listeners");
-            this.subSourceBuffer.addEventListener('error', function(e){
-                Log.error("ME", "subSourceBuffer error");
-                Log.error("ME", e);
-                $("#modalMessage").html("The soureBuffer of MSE has the following error <br> Error: " + e );
-                $("#warningPopup").modal();
-            }, false);
-            this.subSourceBuffer.addEventListener('abort', function (e) {
-                Log.error("ME", "subSourceBuffer aborted: " + e);
-                $("#modalMessage").html("The soureBuffer of MSE is aborted <br> Error: " + e );
-                $("#warningPopup").modal();
-            }, false);
-
-            var self = this;
-            this.subSourceBuffer.addEventListener('updateend', function (e) {
-                Log.debug("ME", "subSourceBuffer append or remove has ended");
-             
-                if (!self.subMSEinitialized){
-                    Log.warn("ME", "sub sourceBuffer first updateend call. Init segment inserted");
-                    self.subMSEinitialized = true;
-                    
-                }else{
-                    if(self.isLastBuf && !self.updateBuffer.length){
-                        self.onFinish();
-                        self.isRemoveBuf = false;
-                    }else if(self.isReset){
-                        self.onReset();
-                        self.isRemoveBuf = false;
-                        self.isReset = false;
-                    }else{
-                        if(self.currentSegNum > 1){
-                            if(!self.isRemoveBuf){
-                                //self.onMediaProcessed();
-                            }else{
-                                if(self.subBufSegNum > 0){
-                                    self.isSubActive = false;
-                                }
-                                self.isRemoveBuf = false;
-                            }
-                        }else{
-                            self.isRemoveBuf = false;
-                        }
-                    }
-                }
-                
-                if ( self.subUpdateBuffer.length ) {
-                    self.subSourceBuffer.appendBuffer(self.subUpdateBuffer.shift());
-                }
-                
-               
-            }, false);
-        }
-        
-    } catch(ex){
-        Log.error("ME", "Can not create a sourceBuffer. Mime type not supported: mimetype=" + this.mimeType);
-        $("#modalMessage").html("This browser does not support the following mimetype <br> mimiType: " + this.mimeType + " <br> Please use another browser.");
-        $("#warningPopup").modal();
-        this.initialized = false;
-        throw ex;
-    }
-    if(!this.isSubInit){
-        this.isSubInit = true;
-        if (this.onInit == null) {
-            Log.warn("ME", "OnInit callback not set");
-        }
-        else if(this.isInit && this.isSubInit && !this.initialized){
-            this.initialized = true;
-            this.onInit();
-        }
-    }
-}
   
 MediaEngine.prototype.getRWPKs = function(){
     var retVal = {};
@@ -490,17 +366,6 @@ MediaEngine.prototype.processMedia = function (arrayOfMoofMdats, segNum){
     }
 
     Log.info("ME", "Start repackaging of media data for trackID = " + this.currentTrackID);
-   
-    if(this.currentTrackID != this.switchTrackID){
-        
-        var difSegNum =  this.currentSegNum - this.preSegNum ;
-        //Log.warn("ME","processMedia segnum : " + difSegNum +  " the track ID is : "+ this.currentTrackID);
-        this.preSegNum = this.currentSegNum;
-        this.isSubBuffer = !this.isSubBuffer;
-        this.nextDecodeTime = 0;
-        this.switchTrackID = this.currentTrackID;
-        this.onSwitchTrack(this.currentTrackID, this.currentSegNum, difSegNum);
-    }
 
     this.resetActiveMp4Box(this.currentTrackID);
     
@@ -531,7 +396,6 @@ MediaEngine.prototype.processMedia = function (arrayOfMoofMdats, segNum){
 
     var bufObj = {
         mediaData: this.lastMediaSegment,
-        isSubBuf: self.isSubBuffer,
         segNum: self.currentSegNum,
         trackID: self.currentTrackID,
     };
@@ -757,96 +621,35 @@ MediaEngine.prototype.checkBufQ = function(){
     this.checkBufReq = setInterval(function () {
         if(!self.manageBufferQ.empty()){
            
-            var isSubBuf = self.manageBufferQ.front().isSubBuf;
+          
             var mediaData = self.manageBufferQ.front().mediaData;
             var segNum = self.manageBufferQ.front().segNum;
-
-            var trackID = self.manageBufferQ.front().trackID;
-            //Log.warn("checkBufQ", segNum);
-            if(!isSubBuf ){
-                //Log.warn("checkBufQ main", segNum);
-                if(segNum <= 1 && !self.isReset){
-                    self.subVidElement.pause();
-                    if(!self.subSourceBuffer.updating){
-                        self.subSourceBuffer.appendBuffer(mediaData);
-                    }else{
-                        self.subUpdateBuffer.push(mediaData);
-                    }
+            
+            if(!self.isMainActive){
+                if(!self.sourceBuffer.updating && !self.updateBuffer.length){
+                    self.sourceBuffer.appendBuffer(mediaData);
+                }else{
+                    self.updateBuffer.push(mediaData);
                 }
-                if(!self.isMainActive){
+                self.isMainActive = true;
+                self.mainBufSegNum = segNum;
+                self.manageBufferQ.dequeue();
+            }else{
+                if (self.mainBufSegNum + 1 == segNum){
                     if(!self.sourceBuffer.updating && !self.updateBuffer.length){
                         self.sourceBuffer.appendBuffer(mediaData);
                     }else{
                         self.updateBuffer.push(mediaData);
                     }
-                    self.isMainActive = true;
                     self.mainBufSegNum = segNum;
-                    self.onSwitchGeometry(trackID, false);
                     self.manageBufferQ.dequeue();
-                }else{
-                    if (self.mainBufSegNum + 1 == segNum){
-                        if(!self.sourceBuffer.updating && !self.updateBuffer.length){
-                            self.sourceBuffer.appendBuffer(mediaData);
-                        }else{
-                            self.updateBuffer.push(mediaData);
-                        }
-                        self.mainBufSegNum = segNum;
-                        self.manageBufferQ.dequeue();
-                    }
                 }
-            }else{
-                //Log.warn("checkBufQ sub", segNum);
-               if(!self.isSubActive){
-                    if(!self.subSourceBuffer.updating && !self.subUpdateBuffer.length){
-                        self.subSourceBuffer.appendBuffer(mediaData);
-                    }else{
-                        self.subUpdateBuffer.push(mediaData);
-                    }
-                    self.isSubActive = true;
-                    self.subBufSegNum = segNum;
-                    self.onSwitchGeometry(trackID, true);
-                    self.manageBufferQ.dequeue();
-                }else{
-                    if (self.subBufSegNum + 1 == segNum){
-                        if(!self.subSourceBuffer.updating &&  !self.subUpdateBuffer.length){
-                            self.subSourceBuffer.appendBuffer(mediaData);
-                        }else{
-                            self.subUpdateBuffer.push(mediaData);
-                        }
-                        self.subBufSegNum = segNum;
-                        self.manageBufferQ.dequeue();
-
-                    }
-                }
-            }   
+            }
+            
         }       
      }, 200) // todo: get rid of this magic value
 }
 
-MediaEngine.prototype.removeBuf = function(isSub, isReset){
-    this.isReset = isReset;
-    if(!isSub){
-        this.isMainActive = false;
-        if(this.videoElement.buffered.length){
-            this.isRemoveBuf = true;
-            this.sourceBuffer.remove(0,this.videoElement.buffered.end(0));
-            this.videoElement.pause();
-        }
-        this.videoElement.currentTime = 0;
-    }else{
-        this.isSubActive = false;
-        if(this.subSourceBuffer.buffered.length){
-            this.isRemoveBuf = true;
-            this.subSourceBuffer.remove(0,this.subVidElement.buffered.end(0));
-            this.subVidElement.pause();
-        }
-        this.subVidElement.currentTime = 0;
-    }
-}
-
-MediaEngine.prototype.isSubBufActive = function(){
-    return this.isSubActive;
-}
 
 MediaEngine.prototype.isMainBufActive = function(){
     return this.isMainActive;
@@ -855,42 +658,32 @@ MediaEngine.prototype.isMainBufActive = function(){
 MediaEngine.prototype.reset = function(isLoop){
     if(isLoop){
         this.currentTrackID = 0;
-        this.isSubBuffer    = false;
         this.isLastBuf      = false;
         this.currentSegNum  = null;     
         this.mainBufSegNum  = 0; 
-        this.subBufSegNum   = 0;
         this.nextDecodeTime = 0; 
         this.preSegNum  = 1;
         this.isMainActive   = true;
 
     
         delete this.updateBuffer;
-        delete this.subUpdateBuffer;
         this.updateBuffer       = [];
-        this.subUpdateBuffer    = [];
     }else{
         window.clearInterval(this.checkBufReq);
 
         delete this.isBusy;
         delete this.isInit;
-        delete this.isSubInit;
-        delete this.isSubBuffer;
         delete this.isMainActive;
-        delete this.isSubActive;
         delete this.initialized;
         delete this.isLastBuf;
         delete this.isReset;
         delete this.MSEinitialized;  
-        delete this.subMSEinitialized;
         delete this.initSegments;   
         delete this.hvc2Infos;    
 
         delete this.currentTrackID;     
-        delete this.switchTrackID;
         delete this.currentSegNum;  
         delete this.mainBufSegNum; 
-        delete this.subBufSegNum; 
         delete this.trackRefs;   
         delete this.currentMp4Box; 
         delete this.nextFileStart;
@@ -901,20 +694,15 @@ MediaEngine.prototype.reset = function(isLoop){
     
         // MSE stuff
         delete this.videoElement;
-        delete this.subVidElement;
         delete this.mediaSource;
-        delete this.subMediaSource;
         delete this.sourceBuffer;
-        delete this.subSourceBuffer;
         delete this.updateBuffer;
-        delete this.subUpdateBuffer;
         delete this.mimeType;
         delete this.initSegmentData;
 
         // events
         delete this.onInit;            
         delete this.onMediaProcessed;
-        delete this.onSwitchTrack;
     }
 }
 

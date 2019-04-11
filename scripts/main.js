@@ -77,9 +77,7 @@ app.controller('OMAFController', function ($scope, manifests){
 
   $scope.player = window.player = new OMAFPlayer();
   $scope.video = document.querySelector('.omaf-player #video1');
-  $scope.subVideo = document.querySelector('.omaf-player #video2');
   $scope.renderEle = document.querySelector('.omaf-player #renderingSurface');
-  $scope.subRenderEle = document.querySelector('.omaf-player #subRenderingSurface');
   $scope.cameraControlElement = document.querySelector('.omaf-player #videobox');
 
   // get metrics update interval
@@ -134,25 +132,6 @@ app.controller('OMAFController', function ($scope, manifests){
     });
   }
 
-  // able/disable track switching
-  var trackSwitchControl = document.getElementById("trackSwitchActivation");
-  if (trackSwitchControl !== null){
-    $scope.player.setTrackSwitch(trackSwitchControl.checked);
-    trackSwitchControl.addEventListener("change", function(){
-      $scope.player.setTrackSwitch(this.checked);
-    });
-  }
-
-  // get buffer limit time
-  $scope.bufferLimit = 1500;
-  var bufferLimitControl = document.getElementById("inputBufferLimit");
-  if (renderDebugControl !== null){
-    $scope.bufferLimit = bufferLimitControl.value;
-    bufferLimitControl.addEventListener("change", function(){
-      $scope.bufferLimit = this.value;
-      $scope.player.setBufferLimit($scope.bufferLimit);
-    });
-  }
 
   // let the use know which version we are using now
   $scope.version = $scope.player.getVersion();
@@ -206,7 +185,7 @@ app.controller('OMAFController', function ($scope, manifests){
     }
     $scope.player.reset();
 
-    $scope.player.init($scope.video, $scope.subVideo, $scope.renderEle, $scope.subRenderEle, $scope.cameraControlElement, $scope.bufferLimit);
+    $scope.player.init($scope.video, $scope.renderEle, $scope.cameraControlElement, $scope.bufferLimit);
     $scope.player.start($scope.selectedMPD.url);
 
     $scope.loadTimestamp = Date.now();

@@ -88,9 +88,7 @@
                 <div id="videobox">
                     <img id="fraunhofer_curtain" src="img/hhi_logo_en.svg"/>
                     <canvas id="renderingSurface"></canvas>
-                    <canvas id="subRenderingSurface"></canvas>
                     <video id="video1" ></video>
-                    <video id="video2" ></video>
                 </div>
                
                 <div id="videoController" class="video-controller">
@@ -135,12 +133,6 @@
                             </div>
                         </div>
                         <div class="form-group row">
-                            <label class="col-6 col-form-label text-primary" for="inputBufferLimit" title="Buffer limit time in milliseconds">Buffer lim:</label>
-                            <div class="col-6">
-                                <input class="form-control" id = "inputBufferLimit" type="number" value="1500" min="0">
-                            </div>
-                        </div>
-                        <div class="form-group row">
                             <label class="col-6 col-form-label text-primary" for="inputMetricsUpdate" title="Metrics update interval">Metrics int:</label>
                             <div class="col-6">
                                 <input class="form-control" id="inputMetricsUpdate" type="number" min="1000" value="2000">
@@ -156,12 +148,6 @@
                             <label class="col-7 col-form-label text-primary" for="renderDebug" title="Render debug information">Render info:</label>
                             <div class="col-5">
                                 <input class="form-check-input" type="checkbox" value="" id="renderDebug">
-                            </div>
-                        </div>
-                        <div class="form-group row">
-                            <label class="col-7 col-form-label text-primary" for="trackSwitchActivation" title="Dynamic track switching based on viewport orientation.">Track switch:</label>
-                            <div class="col-5">
-                                <input class="form-check-input" type="checkbox" value="" id="trackSwitchActivation" checked="true">
                             </div>
                         </div>
                         <div class="form-group row">

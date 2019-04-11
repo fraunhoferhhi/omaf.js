@@ -66,13 +66,9 @@ function Renderer() {
   this.projection_type = null;
   this.camera   = null;
   this.scene    = null;
-  this.subScene = null;
   this.webGLRenderer  = null;
-  this.subWebGLRenderer  = null;
   this.videoElement   = null;
-  this.subVideoElement  = null;
   this.videoTexture   = null;
-  this.subVideoTexture  = null;
   this.projArrtexture   = [];
   this.packArrtexture   = [];
   this.rotateArrtexture = [];
@@ -80,12 +76,9 @@ function Renderer() {
   this.packArrtextureData   = [];
   this.rotateArrtextureData = [];
   this.material       = null;
-  this.subMaterial    = null;
   this.mesh     = null;
-  this.subMesh  = null;
   this.effect   = null;
   this.geometry = null;
-  this.subGeometry = null;
   this.controls = null;
   this.arrProjRegions     = {};
   this.arrPackedRegions   = {};
@@ -93,18 +86,15 @@ function Renderer() {
   this.allTracksRwpk  = {};
   this.initialized    = false;
   this.isAniPause     = false;
-  this.isSub    = false;
   this.aniReq   = null;
   this.resizeReq      = null;
   this.maxCurTime     = 0;
-  this.setIsSwitch      = false;
 
   this.renderDebug = false;     // if set to true, render some additional debug info on top
   this.debugScene = null;
   this.stats = null;
 
   this.onInit   = null;
-  this.onSwitchRender = null;
 }
 
 Renderer.prototype.getFragmentShader = function(){
@@ -168,7 +158,7 @@ Renderer.prototype.setDebug = function(flag){
 }
 
 // projection_type: 0-ERP, 1-CMP
-Renderer.prototype.init = function (projection_type, video, subVideo, renderEle, subRenderEle, cameraEle, fps, framePerSeg, rwpk, mpdVectors) {
+Renderer.prototype.init = function (projection_type, video, renderEle, cameraEle, fps, framePerSeg, rwpk, mpdVectors) {
   if(projection_type == null || projection_type > 1){
     Log.error("Renderer", "projection type not supported: " + projection_type);
     return false;
@@ -211,12 +201,11 @@ Renderer.prototype.init = function (projection_type, video, subVideo, renderEle,
 
   var self = this;
   this.videoElement = video;
-  this.subVideoElement = subVideo;
-
+  
   this.allTracksRwpk = rwpk;
  
   this.scene = new THREE.Scene();
-  this.subScene = new THREE.Scene();
+  
   this.debugScene = new THREE.Scene();
 
   var cameraElement = cameraEle;
@@ -227,18 +216,11 @@ Renderer.prototype.init = function (projection_type, video, subVideo, renderEle,
   this.videoTexture.minFilter = THREE.LinearFilter;
   this.videoTexture.magFilter = THREE.LinearFilter;
   
-  this.subVideoTexture = new THREE.VideoTexture(this.subVideoElement);
-  this.subVideoTexture.minFilter = THREE.LinearFilter;
-  this.subVideoTexture.magFilter = THREE.LinearFilter;
-
+ 
 
   var canvas = renderEle;
   this.webGLRenderer = new THREE.WebGLRenderer({"canvas": canvas});
   this.webGLRenderer.setSize($(canvas).width(), $(canvas).height(), false);
-
-  var subCanvas = subRenderEle;
-  this.subWebGLRenderer = new THREE.WebGLRenderer({"canvas": subCanvas});
-  this.subWebGLRenderer.setSize($(canvas).width(), $(canvas).height(), false);
 
   this.projection_type = projection_type;
 
@@ -247,29 +229,11 @@ Renderer.prototype.init = function (projection_type, video, subVideo, renderEle,
     this.geometry = new THREE.SphereGeometry( 500, 60, 40 );
     this.geometry.scale( - 1, 1, 1 );
 
-    this.subGeometry = new THREE.SphereGeometry( 500, 60, 40 );
-    this.subGeometry.scale( - 1, 1, 1 );
-
-
+    
     this.material = new THREE.ShaderMaterial( {
 
       uniforms: {
         uniTexture: { value: self.videoTexture },
-        uniProjTexture: { value: null },
-        uniPackTexture: { value: null },
-        uniRotateTexture: { value: null },
-        uniMniHeight: { value: null}
-      },
-    
-      vertexShader: this.getVertexShader(),
-      fragmentShader: this.getFragmentShader()
-    } );
-
-    
-    this.subMaterial = new THREE.ShaderMaterial( {
-
-      uniforms: {
-        uniTexture: { value: self.subVideoTexture },
         uniProjTexture: { value: null },
         uniPackTexture: { value: null },
         uniRotateTexture: { value: null },
@@ -287,8 +251,6 @@ Renderer.prototype.init = function (projection_type, video, subVideo, renderEle,
     this.geometry = new THREE.BoxGeometry( 10, 10, 10 );
     //this.geometry = new THREE.PlaneGeometry( 150, 100);
     //this.camera.position.set( 0, 0, 70);
-
-    this.subGeometry = new THREE.BoxGeometry( 10, 10, 10 );
     this.initCubeFace();
 
     this.material = new THREE.ShaderMaterial( {
@@ -306,29 +268,14 @@ Renderer.prototype.init = function (projection_type, video, subVideo, renderEle,
       side: THREE.DoubleSide
     } );
     
-    this.subMaterial = new THREE.ShaderMaterial( {
-
-      uniforms: {
-        uniTexture: { value: self.subVideoTexture },
-        uniProjTexture: { value: null },
-        uniPackTexture: { value: null },
-        uniRotateTexture: { value: null },
-        uniMniHeight: { value: null}
-      },
-    
-      vertexShader: this.getVertexShader(),
-      fragmentShader: this.getFragmentShader(),
-      side: THREE.DoubleSide
-    } );
 
     this.initRWPKInfo();
   }
 
   this.mesh = new THREE.Mesh(this.geometry, this.material);
-  this.subMesh = new THREE.Mesh(this.subGeometry, this.subMaterial);
  
   this.scene.add(this.mesh);
-  this.subScene.add(this.subMesh);
+
 
   // debug scene
   var geoDebug = new THREE.EdgesGeometry( this.geometry ); // or WireframeGeometry 
@@ -374,7 +321,6 @@ Renderer.prototype.init = function (projection_type, video, subVideo, renderEle,
 
   this.resizeReq = this.resize(canvas, function () {
     self.webGLRenderer.setSize($(canvas).width(), $(canvas).height(), false);
-    self.subWebGLRenderer.setSize($(canvas).width(), $(canvas).height(), false);
     self.camera.aspect = $(canvas).width() / $(canvas).height();
     self.camera.updateProjectionMatrix(); 
   });
@@ -469,25 +415,6 @@ Renderer.prototype.initCubeFace = function () {
     this.geometry.faceVertexUvs[0][10] = [frontFace[2], frontFace[1], frontFace[3]];
     this.geometry.faceVertexUvs[0][11] = [frontFace[1], frontFace[0], frontFace[3]];
 
-    this.subGeometry.faceVertexUvs[0] = [];
-  
-    this.subGeometry.faceVertexUvs[0][0] = [rightFace[2], rightFace[1], rightFace[3]];
-    this.subGeometry.faceVertexUvs[0][1] = [rightFace[1], rightFace[0], rightFace[3]];
-  
-    this.subGeometry.faceVertexUvs[0][2] = [leftFace[2], leftFace[1], leftFace[3]];
-    this.subGeometry.faceVertexUvs[0][3] = [leftFace[1], leftFace[0], leftFace[3]];
-  
-    this.subGeometry.faceVertexUvs[0][4] = [topFace[1], topFace[0], topFace[2]];
-    this.subGeometry.faceVertexUvs[0][5] = [topFace[0], topFace[3], topFace[2]];
-  
-    this.subGeometry.faceVertexUvs[0][6] = [bottomFace[1], bottomFace[0], bottomFace[2]];
-    this.subGeometry.faceVertexUvs[0][7] = [bottomFace[0], bottomFace[3], bottomFace[2]];
-  
-    this.subGeometry.faceVertexUvs[0][8] = [backFace[1], backFace[0], backFace[2]];
-    this.subGeometry.faceVertexUvs[0][9] = [backFace[0], backFace[3], backFace[2]];
-  
-    this.subGeometry.faceVertexUvs[0][10] = [frontFace[2], frontFace[1], frontFace[3]];
-    this.subGeometry.faceVertexUvs[0][11] = [frontFace[1], frontFace[0], frontFace[3]];
 
     
 }
@@ -535,28 +462,24 @@ Renderer.prototype.initRWPKInfo = function () {
   }
   var regionsSize = this.allTracksRwpk[Object.keys(this.allTracksRwpk)[0]].regions.length;
 
-  // 0 - main, 1 - sub
-  for (var i = 0 ; i < 2 ; i ++){
-    this.projArrtextureData[i] = new Float32Array(regionsSize * 4);
-    this.packArrtextureData[i] = new Float32Array(regionsSize * 4);
-    this.rotateArrtextureData[i] = new Float32Array(regionsSize);
 
-    this.projArrtexture[i] = new THREE.DataTexture( this.projArrtextureData[i], 1, regionsSize, THREE.RGBAFormat, THREE.FloatType);
-    this.projArrtexture[i].needsUpdate = true;
-    this.packArrtexture[i] = new THREE.DataTexture( this.packArrtextureData[i], 1, regionsSize, THREE.RGBAFormat, THREE.FloatType);
-    this.packArrtexture[i].needsUpdate = true;
-    this.rotateArrtexture[i] = new THREE.DataTexture( this.rotateArrtextureData[i], 1, regionsSize, THREE.AlphaFormat, THREE.FloatType);
-    this.rotateArrtexture[i].needsUpdate = true;
+    this.projArrtextureData[0] = new Float32Array(regionsSize * 4);
+    this.packArrtextureData[0] = new Float32Array(regionsSize * 4);
+    this.rotateArrtextureData[0] = new Float32Array(regionsSize);
 
-  }
-  
+    this.projArrtexture[0] = new THREE.DataTexture( this.projArrtextureData[0], 1, regionsSize, THREE.RGBAFormat, THREE.FloatType);
+    this.projArrtexture[0].needsUpdate = true;
+    this.packArrtexture[0] = new THREE.DataTexture( this.packArrtextureData[0], 1, regionsSize, THREE.RGBAFormat, THREE.FloatType);
+    this.packArrtexture[0].needsUpdate = true;
+    this.rotateArrtexture[0] = new THREE.DataTexture( this.rotateArrtextureData[0], 1, regionsSize, THREE.AlphaFormat, THREE.FloatType);
+    this.rotateArrtexture[0].needsUpdate = true;
+
   var proj_picture_width = this.allTracksRwpk[Object.keys(this.allTracksRwpk)[0]].proj_picture_width;
   var proj_picture_height = this.allTracksRwpk[Object.keys(this.allTracksRwpk)[0]].proj_picture_height;
   var packed_picture_width = this.allTracksRwpk[Object.keys(this.allTracksRwpk)[0]].packed_picture_width;
   var packed_picture_height = this.allTracksRwpk[Object.keys(this.allTracksRwpk)[0]].packed_picture_height;
 
   this.material.uniforms.uniMniHeight.value = 1 / regionsSize;
-  this.subMaterial.uniforms.uniMniHeight.value = 1 / regionsSize;
   
   for (key in this.allTracksRwpk) {
     
@@ -623,20 +546,8 @@ Renderer.prototype.initRWPKInfo = function () {
   this.material.uniforms.uniProjTexture.value = this.projArrtexture[0];
   this.material.uniforms.uniPackTexture.value = this.packArrtexture[0];
   this.material.uniforms.uniRotateTexture.value = this.rotateArrtexture[0];
-  this.subMaterial.uniforms.uniProjTexture.value = this.projArrtexture[1];
-  this.subMaterial.uniforms.uniPackTexture.value = this.packArrtexture[1];
-  this.subMaterial.uniforms.uniRotateTexture.value = this.rotateArrtexture[1];
 }
 
-Renderer.prototype.subMatchTracktoCube = function (track) {
-  
-  this.projArrtextureData[1].set(this.arrProjRegions[track]);
-  this.packArrtextureData[1].set(this.arrPackedRegions[track]);
-  this.rotateArrtextureData[1].set(this.arrRotates[track]);
-  this.projArrtexture[1].needsUpdate = true;
-  this.packArrtexture[1].needsUpdate = true;
-  this.rotateArrtexture[1].needsUpdate = true;
-}
 
 Renderer.prototype.matchTracktoCube = function (track) {
   
@@ -649,9 +560,6 @@ Renderer.prototype.matchTracktoCube = function (track) {
   
 }
 
-Renderer.prototype.readyToChangeTrack = function (isSub) {
-  this.isSub = isSub;
-}
 
 Renderer.prototype.animate = function () {
   var self = this;
@@ -670,46 +578,19 @@ Renderer.prototype.mainRenderVideo = function () {
   this.webGLRenderer.render(this.subScene, this.camera);
 }
 
-
-Renderer.prototype.subRenderVideo = function () {
-  this.subWebGLRenderer.clear();
-  this.subWebGLRenderer.render(this.subScene, this.camera);
-}
-
-
 Renderer.prototype.renderVideo = function () {
   if(this.isAniPause){
     return;
   }
   this.controls.update();
-  if(this.setIsSwitch){
-    if(!this.isSub){
-      if(this.videoElement.currentTime > this.maxCurTime){
-        this.onSwitchRender(true);
-      }
-    } else{
-      if(this.subVideoElement.currentTime > this.maxCurTime){
-        //Log.warn("Renderer", "maxCurTime: "+ this.maxCurTime);
-        //Log.warn("Renderer", "sub: "+ this.subVideoElement.currentTime);
-        this.onSwitchRender(false);
-      }
-    }
-  }
-  
+
   this.webGLRenderer.clear();
   this.webGLRenderer.render(this.scene, this.camera);
 
-  this.subWebGLRenderer.clear();
-  this.subWebGLRenderer.render(this.subScene, this.camera);
-  
   if(this.renderDebug){
     this.webGLRenderer.autoClear = false;
     this.webGLRenderer.clearDepth(); // clear the depth buffer
     this.webGLRenderer.render( this.debugScene, this.camera );
-
-    this.subWebGLRenderer.autoClear = false;
-    this.subWebGLRenderer.clearDepth(); // clear the depth buffer
-    this.subWebGLRenderer.render( this.debugScene, this.camera );
   }
 }
 
@@ -755,40 +636,27 @@ Renderer.prototype.setMaxCurTime = function (time) {
   this.maxCurTime = time;
 }
 
-Renderer.prototype.setSwitch = function (isset) {
-  this.setIsSwitch = isset;
-}
 
 Renderer.prototype.reset = function () {
   if(this.initialized){
     window.cancelAnimationFrame(this.aniReq);
     window.clearInterval(this.resizeReq);
     this.webGLRenderer.clear();
-    this.subWebGLRenderer.clear();
     delete this.camera;
     delete this.scene;
-    delete this.subScene;
     delete this.webGLRenderer;
-    delete this.subWebGLRenderer;
     delete this.videoElement;
-    delete this.subVideoElement;
     delete this.videoTexture;
-    delete this.subVideoTexture;
     delete this.mesh;
-    delete this.subMesh;
     delete this.effect;
     delete this.geometry;
-    delete this.subGeometry;
     delete this.controls;
     delete this.allTracksRwpk;
     delete this.initialized;
-    delete this.isSub;
     delete this.isAniPause;
     delete this.maxCurTime;
-    delete this.setIsSwitch;
     delete this.aniReq;
     delete this.resizeReq;
     delete this.onInit;
-    delete this.onSwitchRender;
   }
 }
