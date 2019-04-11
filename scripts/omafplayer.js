@@ -63,7 +63,7 @@ omaf@hhi.fraunhofer.de
 ----------------------------------------------------------------------------- */
 
 function OMAFPlayer () {
-    this.version        = "0.1.0"; // change it every time we push to master or create a new tag
+    this.version        = "0.1.1"; // change it every time we push to master or create a new tag
 
     this.initialized    = false;
     this.isOninit       = false;

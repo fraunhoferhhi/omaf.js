@@ -103,13 +103,21 @@ MPDParser.prototype.init = function (xmlDoc) {
     var pDurStr = xmlDoc.getElementsByTagName("Period")[0].getAttribute("duration");
     this.periodDuration = this.secondsFromIsoDuration(pDurStr);
 
-    this.lastSegNr = this.getLastSegmentNr();
+    try{
+        this.lastSegNr = this.getLastSegmentNr();
+    }
+    catch(e){
+        Log.error("MPDParser", "could not parse last segment number. Make sure you use the correct MPD (with SegmentTemplate)");
+        $("#modalMessage").html("MPDParsingError: make sure you use the correct MPD (with SegmentTemplate)");
+        $("#warningPopup").modal();
+        return;
+    }
 
     if (adaptationSets.length === 0){
         Log.error("MPDParser", "No AdaptationSets found in the manifest");
         $("#modalMessage").html("No AdaptationSets found in the manifest");
         $("#warningPopup").modal();
-        throw "MPDParsingError";
+        return;
     }
 
     // iterate all essential porperties
@@ -127,7 +135,7 @@ MPDParser.prototype.init = function (xmlDoc) {
                 Log.error("MPDParser", "Multiple projection formats found!");
                 $("#modalMessage").html("Multiple projection formats found in the manifest");
                 $("#warningPopup").modal();
-                throw "MPDParsingError";
+                return;
             }
         }
     }
@@ -335,6 +343,12 @@ MPDParser.prototype.getMediaRequestsSimple = function (yawDeg, pitchDeg, segNr){
         }
         // no rate adaptation just pick the first one
         var segTemplate = reps[reps.length-1].getElementsByTagName("SegmentTemplate");
+
+        // just for testing if we mix QPs of different tiles
+        // if(i>10){
+        //     segTemplate = reps[0].getElementsByTagName("SegmentTemplate");
+        // }
+
         if (segTemplate.length > 1) {
             Log.error("MPDParser", "Only one SegmentTemplate is supported inside a Representation.");
             $("#modalMessage").html("Only one SegmentTemplate is supported inside a Representation <br> AdaptationSet id = " + dependencies[i]);
@@ -348,6 +362,8 @@ MPDParser.prototype.getMediaRequestsSimple = function (yawDeg, pitchDeg, segNr){
         // todo: check duration
         urls.push(segTemplate[0].getAttribute("media").replace("$Number$", segNr));
     }
+
+    // console.log(urls); // debug
 
     return urls;
 }
