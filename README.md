@@ -38,6 +38,10 @@ Software in this repository implements a subset of current OMAF version 1 standa
 
 ### File Creation for HEVC-based viewport-dependent OMAF video profile with MCTS (HEVC Tiles)
 
+* Supported codecs:
+  * [HM reference encoder](https://hevc.hhi.fraunhofer.de/svn/svn_HEVCSoftware/) (single QP only)
+  * [Kvazaar](https://github.com/ultravideo/kvazaar)
+  * [HHI live encoder](https://www.hhi.fraunhofer.de/en/departments/vca/technologies-and-solutions/hevc-software-and-hardware-solutions.html)
 * Files inlude OMAF metadata such as:
   * Projection format (currently only Cubemap is supported)
   * Region-wise Packing (RWPK)
@@ -132,7 +136,7 @@ In order to simplify the usage you can add your DASH manifest URLs to the `manif
       "url": "https://.../content/dash/GarageDebug_live.mpd"
     }
 
-## 5. Getting started for dummies on macOS
+## 5. Getting started on macOS
 
 Here are some really simple guidelines to get it running locally (localhost streaming).
 
@@ -169,8 +173,6 @@ Now you can start the server
 
 And open Safari web browser and go to: `http://127.0.0.1:5555/omaf.js/` which loads the JavaScript player website. Now you can input the URL of the test data MPD in the top field `http://127.0.0.1:5555/OMAFBrowserData/Garage/dash/Garage_live.mpd` and click on load button.
 After MPD is loaded and the player is initialized you can click on play button to start the streaming session.
-
-
 
 ## 6. License
 
