@@ -18,12 +18,16 @@ Step 5: package encoded HEVC bitstreams to OMAF files
 
 You can skip certain steps. Use --help for more information on all available options.
 
-Example usage:
-./create_omaf_files.py -i Formula3VR_Garage_8192x4096.yuv -f 9 -q 32 -t 8 -c HMconfig.cfg
-  process 9 frames of Formula3VR_Garage_8192x4096.yuv with single QP 32 and use max 8 threads.
+NOTE: make sure that you have compiled and installed kvazaar (it shall be in your $PATH) if you want to use '--codec 1'
+NOTE: '--codec 1' is HM and is very slow. It also does not support multiple QPs as other codecs.
+NOTE: '--codec 2' is HHI encoder and its binary is not included in this repository. Contact us if you want to use our codec.
 
-./create_omaf_files.py -s 4-5 -i out/yuv/OutLap/ -f 9 -p OutLap -c HMconfig.cfg -q 24
-  encode (with QP=24) and package yuv files from 'out/yuv/OutLap' directory
+Example usage:
+./create_omaf_files.py -s 1-5 -i raw_video.yuv -f 1017 -fr 30 -q 32 25 -t 12 --codec 1 -o kvazaarEncoding
+process 1017 frames of raw_video.yuv with two QPs 32 and 25 and use max 12 threads.
+
+./create_omaf_files.py -s 4-5 -i folder/with/yuvs -f 270 -fr 30 -q 32 -t 8 --codec 0 -c conf/encoder_randomaccess_main_RAP9.cfg -p Garage -o HMencodings
+only encode and package 270 frames of yuv files from 'folder/with/yuvs' directory and name the sequenze 'Garage'
 """
 
 import sys
@@ -35,7 +39,7 @@ import re
 import shlex, subprocess
 
 __author__ = "Dimitri Podborski"
-__version__ = "0.1"
+__version__ = "0.2"
 __maintainer__ = "Dimitri Podborski"
 __email__ = "dimitri.podborski@hhi.fraunhofer.de"
 __status__ = "Development"
@@ -325,18 +329,20 @@ def get_step3_cmd(input_dir, output_dir, guardband_size, guardband_mode):
     return cmds
 
 
-def get_step4_cmd(bin_dir, input_dir, output_dir, file_prefix, qps, fps, frame_cnt, config_file, hhi_encoder):
+def get_step4_cmd(bin_dir, input_dir, output_dir, file_prefix, qps, fps, frame_cnt, config_file, codec):
     enc_bin = os.path.join(bin_dir, 'TAppEncoder')
-    if hhi_encoder is True:
+    if codec == 2:
         enc_bin = os.path.join(bin_dir, 'FileInputTest')
+    elif codec == 1:
+        enc_bin = 'kvazaar'
     elif not os.path.exists(config_file):
         print "HM config file \"{}\" not found".format(config_file)
         return None
-    if not os.path.exists(enc_bin):
-        print "\"{}\" not found".format(enc_bin)
+    if not os.path.exists(enc_bin) and not codec == 1:
+        print "\"{}\" not found. HM binary missing? If you want to use HHI enc please contact HHI.".format(enc_bin)
         return None
 
-    if not hhi_encoder and len(qps) > 1:
+    if codec == 0 and len(qps) > 1:
         # HM needs to be updated to support multiple QPs
         print "WARNING: Multiple QPs are not supported for now. HM Encoder needs to be updated for this. " \
               "Continue now with QP={}".format(qps[0])
@@ -353,31 +359,35 @@ def get_step4_cmd(bin_dir, input_dir, output_dir, file_prefix, qps, fps, frame_c
                 output_file = os.path.join(output_dir, 'qp{}'.format(qp), output_file)
                 log_file = os.path.join(output_dir, 'qp{}'.format(qp), log_file)
 
-                cmd = enc_bin
-                if hhi_encoder is True:
-                    cmd += " --InputFileName {}".format(input_file)
-                    input_file_frames = get_frame_cnt_yuv420(input_file, size, size)
+                input_file_frames = get_frame_cnt_yuv420(input_file, size, size)
 
+                if frame_cnt + 1 > input_file_frames:
+                    print "Error: provided frame count {}+1 is to big " \
+                        "for file {} with {} frames.".format(frame_cnt, input_file, input_file_frames)
+                    return None
+
+                cmd = enc_bin
+                if codec == 2: # HHI encoder
+                    cmd += " --InputFileName {}".format(input_file)
                     if input_file_frames < 20:
                         cmd += " --Prefetch {}".format(input_file_frames)
                     if frame_cnt > 0:
-                        if frame_cnt + 1 > input_file_frames:
-                            print "Error: provided frame count {}+1 is to big " \
-                                  "for file {} with {} frames.".format(frame_cnt, input_file, input_file_frames)
-                            return None
                         cmd += " --NumFrames {}".format(frame_cnt + 1)
                     cmd += " --m 1 --CodingFlags 0 --Verbosity 1 --TicksPerSecond 90000 --NumThreads 2 --SceneCutDetection 0" \
                            " --Quality 14 -r 0 --FileBitDepth 8 --InternalBitDepth 8 --IDRPeriod 9 --ParallelismMode 3"
                     cmd += " --Width {} --Height {}  --TemporalRate {} --Qp {}" \
                            " --BitstreamFileName {} &>{}".format(size, size, fps, qp, output_file, log_file)
-                else:
+                elif codec == 1: # kvazaar
+                    cmd += " -i {} -o {} ".format(input_file, output_file)
+                    cmd += " --no-open-gop --bipred --mv-constraint frametilemargin --set-qp-in-cu --slices tiles"
+                    cmd += " --no-info --no-psnr --tiles 1x1"
+                    cmd += " --preset slower --gop 8 --period 8 --qp {}".format(qp)
+                    cmd += " --input-res {}x{} --input-fps {}".format(size, size, fps)
+                    if frame_cnt > 0:
+                        cmd += " --frames {}".format(frame_cnt + 1)
+                else: # HM reference HEVC encoder => start it before you go on vacation ;)
                     cmd += " --InputFile={} -c {}".format(input_file, config_file)
                     if frame_cnt > 0:
-                        input_file_frames = get_frame_cnt_yuv420(input_file, size, size)
-                        if frame_cnt + 1 > input_file_frames:
-                            print "Error: provided frame count {}+1 is to big " \
-                                  "for file {} with {} frames.".format(frame_cnt, input_file, input_file_frames)
-                            return None
                         cmd += " --FramesToBeEncoded={}".format(frame_cnt + 1)
                     cmd += " --SEITempMotionConstrainedTileSets=1 --SEITMCTSTileConstraint=1"
                     cmd += " --SourceWidth={} --SourceHeight={} --FrameRate={} --QP={} --InputBitDepth=8" \
@@ -484,8 +494,10 @@ def main():
     parser.add_argument('-gbs', '--GuardBandSize', type=int, default=0, help='Guard band size')
     parser.add_argument('-gbm', '--GuardBandMode', default='smear', help='Guard band mode: smear - copy pixels, mirror - mirror pixels')
 
-    parser.add_argument('--hhienc', dest='hhienc', action='store_true', help='Use HHI encoder instead of HM')
-    parser.set_defaults(hhienc=False)
+    parser.add_argument('--codec', type=int, default=1, help='Select codec:\n'
+                                                             '  0 = HM reference HEVC encoder\n'
+                                                             '  1 = kvazaar\n'
+                                                             '  2 = HHI encoder')
 
     args = parser.parse_args()
 
@@ -500,10 +512,10 @@ def main():
     if not filename_prefix:
         print "Error: please provide file prefix with option [-p|--FilePrefix] since it can not be guessed from filename"
         return -1
-    if args.hhienc is False and not args.HMconfig and 4 in steps:
+    if args.codec == 0 and not args.HMconfig and 4 in steps:
         print "Error: please provide the config file for HM using [-c|HMconfig] option"
         return -1
-    if args.hhienc is False and len(args.QP) > 1 and 4 in steps:
+    if args.codec == 0 and len(args.QP) > 1 and 4 in steps:
         # HM needs to be updated to support multiple QPs
         print "WARNING: Multiple QPs are not supported for now. HM Encoder needs to be updated for this. " \
               "Continue now with QP={}".format(args.QP[0])
@@ -569,7 +581,7 @@ def main():
                 for qp in args.QP:
                     make_dirs_if_not_exist(os.path.join(hevc_dir, "qp{}".format(qp)))
             cmds = get_step4_cmd(bin_dir, next_input, hevc_dir, filename_prefix, args.QP, args.FrameRate,
-                                 args.FramesToBeEncoded, args.HMconfig, args.hhienc)
+                                 args.FramesToBeEncoded, args.HMconfig, args.codec)
             if not cmds:
                 print "Error: no commands to execute in step 4"
                 return -1
@@ -577,8 +589,8 @@ def main():
             print "First command: {}".format(cmds[0])
             execute_cmds(cmds)
 
-            # if HHIenc is used, filter NALs
-            if args.hhienc is True:
+            # if not HM is used, filter NALs
+            if not args.codec == 0:
                 filter_nalus(hevc_dir, args.QP, filename_prefix)
             next_input = hevc_dir
         elif step == 5:
