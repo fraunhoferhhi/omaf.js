@@ -70,7 +70,8 @@ Software in this repository implements a subset of current OMAF version 1 standa
   * JavaScript repackaging to a single *hvc1* track for MSE
 * Rendering using webGL and [three.js](https://github.com/mrdoob/three.js/)
   * Cubemap projection
-  * RWPK as described in [content creation tools](./omaf-file-creation/README.md)
+  * Equirectangular projection
+  * RWPK (tested with [HHI content creation tools](./omaf-file-creation/README.md) and [Nokia OMAF Creator](https://github.com/nokiatech/omaf))
 * SRQR is supported to the extent needed for tile-based streaming
 * DASH Preselection descriptor is used to determine the depencencies between Adaptation Sets
 * `'rwpk'` box is used to correctly render the video texture of the corresponding *extractor track*
