@@ -183,7 +183,7 @@ MPDParser.prototype.init = function (xmlDoc) {
                     az = THREE.Math.degToRad(parseInt(regions[j].getAttribute("centre_azimuth")) / 65536.0);
                     el = THREE.Math.degToRad(parseInt(regions[j].getAttribute("centre_elevation")) / 65536.0);
                 }else if(qr == lowestQualRanking ){
-                    if(!parseInt(regions[j].getAttribute("centre_azimuth"))){
+                    if(parseInt(regions[j].getAttribute("centre_azimuth"))){
                         az += THREE.Math.degToRad(parseInt(regions[j].getAttribute("centre_azimuth")) / 65536.0);
                     }
                     if(parseInt(regions[j].getAttribute("centre_elevation"))){
