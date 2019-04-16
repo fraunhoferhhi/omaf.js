@@ -244,11 +244,14 @@ Renderer.prototype.init = function (projection_type, video, subVideo, renderEle,
 
   if(this.projection_type == 0){
 
-    this.geometry = new THREE.SphereGeometry( 500, 60, 40 );
+    this.geometry = new THREE.SphereGeometry( 100, 60, 60 );
+    this.geometry.rotateY(Math.PI / 2.0);
     this.geometry.scale( - 1, 1, 1 );
 
-    this.subGeometry = new THREE.SphereGeometry( 500, 60, 40 );
+    this.subGeometry = new THREE.SphereGeometry( 100, 60, 60 );
+    this.subGeometry.rotateY(Math.PI / 2.0);
     this.subGeometry.scale( - 1, 1, 1 );
+
 
 
     this.material = new THREE.ShaderMaterial( {
@@ -711,14 +714,6 @@ Renderer.prototype.renderVideo = function () {
     this.subWebGLRenderer.clearDepth(); // clear the depth buffer
     this.subWebGLRenderer.render( this.debugScene, this.camera );
   }
-}
-
-Renderer.prototype.getAzimuthDeg = function () {
-  return THREE.Math.radToDeg(this.controls.getAzimuthalAngle());
-}
-
-Renderer.prototype.getElevationDeg = function () {
-  return THREE.Math.radToDeg(this.controls.getPolarAngle()) - 90;
 }
 
 Renderer.prototype.getOMAFPosition = function() {
