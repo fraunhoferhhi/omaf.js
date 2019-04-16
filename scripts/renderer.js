@@ -227,6 +227,7 @@ Renderer.prototype.init = function (projection_type, video, renderEle, cameraEle
   if(this.projection_type == 0){
 
     this.geometry = new THREE.SphereGeometry( 500, 60, 40 );
+    this.geometry.rotateY(Math.PI / 2.0);
     this.geometry.scale( - 1, 1, 1 );
 
     
