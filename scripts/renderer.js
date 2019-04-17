@@ -583,22 +583,10 @@ Renderer.prototype.initRWPKInfo = function () {
       var packed_reg_height = (region.packed_reg_height) / packed_picture_height;
 
       // half pixel correction to get rid of seams between tiles
-      if(packed_reg_left > 0.0){
-        packed_reg_left += (1.0 / packed_picture_width) * 0.5;
-      }
-      if(packed_reg_bottom > 0.0){
-        packed_reg_bottom += (1.0 / packed_picture_height) * 0.5;
-      }
-      if(packed_reg_left + packed_reg_width > 1.0){
-        packed_reg_width -= (1.0 / packed_picture_width) * 0.5;
-      }else{
-        packed_reg_width -= (1.0 / packed_picture_width);
-      }
-      if(packed_reg_bottom + packed_reg_height > 1.0){
-        packed_reg_height -= (1.0 / packed_picture_height) * 0.5;
-      }else{
-        packed_reg_height -= (1.0 / packed_picture_height);
-      }
+      packed_reg_left += (1.0 / packed_picture_width) * 0.5;
+      packed_reg_width -= (1.0 / packed_picture_width) * 1.0;
+      packed_reg_bottom += (1.0 / packed_picture_height) * 0.5;
+      packed_reg_height -= (1.0 / packed_picture_height) * 1.0;
 
       offset = 4 * j;
       this.arrProjRegions[key].set([parseFloat(proj_reg_left),parseFloat(proj_reg_bottom),parseFloat(proj_reg_width),parseFloat(proj_reg_height)],offset);
