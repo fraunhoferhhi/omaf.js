@@ -244,11 +244,14 @@ Renderer.prototype.init = function (projection_type, video, subVideo, renderEle,
 
   if(this.projection_type == 0){
 
-    this.geometry = new THREE.SphereGeometry( 500, 60, 40 );
+    this.geometry = new THREE.SphereGeometry( 100, 60, 60 );
+    this.geometry.rotateY(Math.PI / 2.0);
     this.geometry.scale( - 1, 1, 1 );
 
-    this.subGeometry = new THREE.SphereGeometry( 500, 60, 40 );
+    this.subGeometry = new THREE.SphereGeometry( 100, 60, 60 );
+    this.subGeometry.rotateY(Math.PI / 2.0);
     this.subGeometry.scale( - 1, 1, 1 );
+
 
 
     this.material = new THREE.ShaderMaterial( {
@@ -580,22 +583,10 @@ Renderer.prototype.initRWPKInfo = function () {
       var packed_reg_height = (region.packed_reg_height) / packed_picture_height;
 
       // half pixel correction to get rid of seams between tiles
-      if(packed_reg_left > 0.0){
-        packed_reg_left += (1.0 / packed_picture_width) * 0.5;
-      }
-      if(packed_reg_bottom > 0.0){
-        packed_reg_bottom += (1.0 / packed_picture_height) * 0.5;
-      }
-      if(packed_reg_left + packed_reg_width > 1.0){
-        packed_reg_width -= (1.0 / packed_picture_width) * 0.5;
-      }else{
-        packed_reg_width -= (1.0 / packed_picture_width);
-      }
-      if(packed_reg_bottom + packed_reg_height > 1.0){
-        packed_reg_height -= (1.0 / packed_picture_height) * 0.5;
-      }else{
-        packed_reg_height -= (1.0 / packed_picture_height);
-      }
+      packed_reg_left += (1.0 / packed_picture_width) * 0.5;
+      packed_reg_width -= (1.0 / packed_picture_width) * 1.0;
+      packed_reg_bottom += (1.0 / packed_picture_height) * 0.5;
+      packed_reg_height -= (1.0 / packed_picture_height) * 1.0;
 
       offset = 4 * j;
       this.arrProjRegions[key].set([parseFloat(proj_reg_left),parseFloat(proj_reg_bottom),parseFloat(proj_reg_width),parseFloat(proj_reg_height)],offset);
@@ -711,14 +702,6 @@ Renderer.prototype.renderVideo = function () {
     this.subWebGLRenderer.clearDepth(); // clear the depth buffer
     this.subWebGLRenderer.render( this.debugScene, this.camera );
   }
-}
-
-Renderer.prototype.getAzimuthDeg = function () {
-  return THREE.Math.radToDeg(this.controls.getAzimuthalAngle());
-}
-
-Renderer.prototype.getElevationDeg = function () {
-  return THREE.Math.radToDeg(this.controls.getPolarAngle()) - 90;
 }
 
 Renderer.prototype.getOMAFPosition = function() {
