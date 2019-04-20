@@ -182,6 +182,13 @@ MPDParser.prototype.init = function (xmlDoc) {
                     lowestQualRanking = qr;
                     az = THREE.Math.degToRad(parseInt(regions[j].getAttribute("centre_azimuth")) / 65536.0);
                     el = THREE.Math.degToRad(parseInt(regions[j].getAttribute("centre_elevation")) / 65536.0);
+                }else if(qr == lowestQualRanking ){
+                    if(parseInt(regions[j].getAttribute("centre_azimuth"))){
+                        az += THREE.Math.degToRad(parseInt(regions[j].getAttribute("centre_azimuth")) / 65536.0);
+                    }
+                    if(parseInt(regions[j].getAttribute("centre_elevation"))){
+                        el += THREE.Math.degToRad(parseInt(regions[j].getAttribute("centre_elevation")) / 65536.0);
+                    }
                 }
             }
             this.viewPortBestRegion[asID] = new THREE.Vector3( Math.cos(el)*Math.cos(az), Math.cos(el)*Math.sin(az), Math.sin(el) );
