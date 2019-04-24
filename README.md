@@ -24,9 +24,9 @@ appear in the conference. The submitted version of the paper can be downloaded f
         primaryClass={cs.MM}
     }
 
-To see the JavaScript Player in action you can watch our MMSys demo video here:
+To see the JavaScript Player in action you can watch our MMSys demo video on YouTube:
 
-[![See omaf.js in action](img/yt_thumbnail.jpeg)](https://youtu.be/FpQiF8YEfY4)
+[![See omaf.js in action](img/yt_thumbnail.gif)](https://youtu.be/FpQiF8YEfY4)
 
 We ask everyone who is interested in OMAF to test the implementation and report issues if you find things which can be improved.
 
