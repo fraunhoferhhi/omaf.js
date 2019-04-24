@@ -13,11 +13,11 @@ This repository contains the **proof-of-concept** implementation of the most adv
 Further information about the individual modules can be found below.
 
 This implementation was also submitted to the demo track of ACM Multimedia Systems Conference [ACM MMSys'19](http://www.mmsys2019.org/participation/demo-track/) and has been accepted to
-appear in the conference. The submitted version of the paper (not camera ready yet) can be downloaded [here](https://arxiv.org/pdf/1903.02971.pdf). Please cite our paper if you use something from this repository:
+appear in the conference. The submitted version of the paper can be downloaded from [here](https://arxiv.org/pdf/1903.02971.pdf). Please cite our paper if you use something from this repository:
 
     @misc{podborski2019html5,
         title={HTML5 MSE Playback of MPEG 360 VR Tiled Streaming},
-        author={Dimitri Podborski and Jangwoo Son and Gurdeep Singh Bhullar and Cornelius Hellge and Thomas Schierl},
+        author={Dimitri Podborski and Jangwoo Son and Gurdeep Singh Bhullar and Robert Skupin and Yago Sanchez and Cornelius Hellge and Thomas Schierl},
         year={2019},
         eprint={1903.02971},
         archivePrefix={arXiv},
@@ -35,6 +35,27 @@ Thank you!
 ## Features
 
 Software in this repository implements a subset of current OMAF version 1 standard, including the following main features:
+
+### JavaScript Player for HEVC-based viewport-dependent OMAF video profile with MCTS (HEVC Tiles)
+
+* Fully tested on Safari 12.02 (macOS)
+* For more infos on Microsoft Edge browser, please check out `edgebrowser` branch and read the documentation
+* Viewport-dependent streaming for static DASH MPD with *SegmentTemplate*
+* HTML5 video element with MSE is used for decoding of the media segments
+  * JavaScript repackaging to a single *hvc1* track for MSE
+* Rendering using webGL and [three.js](https://github.com/mrdoob/three.js/)
+  * Cubemap projection
+  * Equirectangular projection
+  * RWPK (tested with [HHI content creation tools](./omaf-file-creation/README.md) and [Nokia OMAF Creator](https://github.com/nokiatech/omaf))
+* SRQR is supported to the extent needed for tile-based streaming
+* DASH Preselection descriptor is used to determine the depencencies between Adaptation Sets
+* `'rwpk'` box is used to correctly render the video texture of the corresponding *extractor track*
+* Controlling of the buffer size
+* UI controls for Play / Pause / Load next MPD / toggle fullscreen mode / zoom
+* Rendering of debug information such as:
+  * Cube boundaries
+  * SRQR high quality region vectors
+* Plot data with [google charts API](https://developers.google.com/chart/)
 
 ### File Creation for HEVC-based viewport-dependent OMAF video profile with MCTS (HEVC Tiles)
 
@@ -58,27 +79,6 @@ Software in this repository implements a subset of current OMAF version 1 standa
   * linux
 * More details for file creation can be found [here](./omaf-file-creation/README.md)
 
-### JavaScript Player for HEVC-based viewport-dependent OMAF video profile with MCTS (HEVC Tiles)
-
-* Fully tested on Safari 12.02 (macOS)
-* For more infos on Microsoft Edge browser, please check out `edgebrowser` branch and read the documentation
-* Viewport-dependent streaming for static DASH MPD with *SegmentTemplate*
-* HTML5 video element with MSE is used for decoding of the media segments
-  * JavaScript repackaging to a single *hvc1* track for MSE
-* Rendering using webGL and [three.js](https://github.com/mrdoob/three.js/)
-  * Cubemap projection
-  * Equirectangular projection
-  * RWPK (tested with [HHI content creation tools](./omaf-file-creation/README.md) and [Nokia OMAF Creator](https://github.com/nokiatech/omaf))
-* SRQR is supported to the extent needed for tile-based streaming
-* DASH Preselection descriptor is used to determine the depencencies between Adaptation Sets
-* `'rwpk'` box is used to correctly render the video texture of the corresponding *extractor track*
-* Controlling of the buffer size
-* UI controls for Play / Pause / Load next MPD / toggle fullscreen mode / zoom
-* Rendering of debug information such as:
-  * Cube boundaries
-  * SRQR high quality region vectors
-* Plot data with [google charts API](https://developers.google.com/chart/)
-
 ## 1. JavaScript Player documentation
 
 The JavaScript player implementation was tested on Safari browser with support of HEVC video through HTML5 Media Source Extensions API. In addition, the WebGL API is used for rendering, using region-wise packing metadata defined in OMAF.
@@ -99,11 +99,11 @@ Before ME processes the segments each of the segments consist of multiple *hvc1*
 
 ### Rendering
 
-After the repackaged segment is processed by the MSE SourceBuffer, the browser decodes the video and the video texture is rendered by the RE module using OMAF region-wise packing metadata. Rendering module is using a fragment shader to unpack the regions. The figure below visualizes the rendering process based on an example of a CMP video with 12 high-quality tiles and 12 low-quality tiles:
+After the repackaged segment is processed by the MSE SourceBuffer, the browser decodes the video and the video texture is rendered by the RE module using OMAF region-wise packing metadata. Rendering module is using a fragment shader to unpack the regions. The figure below visualizes the rendering process based on an example of a CMP video where each face of the cube is divided into four tiles while the decoded picture is composed of 12 high-resolution and 12 low-resolution tiles:
 
 ![rendering](img/renderer.png "Rendering")
 
-The 48 triangular surfaces of the cube as depicted in figure (c) can be represented as a 2D plane like in figure (b). The RE uses OMAF metadata to render the resolved image correctly at the cube faces as shown in figure (b). The Region-wise Packing (RWPK) in the OMAF metadata has top-left packed and unpacked coordinates, width, height and rotation value of tiles for all tracks. Since the position and size of the cube faces are always the same, the image in figure (b) can be assumed to be an unpacked image. Therefore, the RE sets the rendering range of the figure (a) using the RWPK metadata, and renders the tiles of the resolved image to the cube faces of the figure (b). However, when there is a change in the viewport position, the RE has to set different metadata for the corresponding track. In the implementation, when the manifest file is loaded, the RE module is initialized with all RWPK metadata to be prepared for all tracks.
+The 12 triangular surfaces of the cube as depicted in figure (c) can be represented as a 2D plane like in figure (b). The fragment shader of the RE module uses OMAF metadata to render the resolved image correctly at the cube faces as shown in figure (b). The Region-wise Packing (RWPK) of the OMAF metadata has top-left packed and unpacked coordinates, width, height and rotation value of tiles for all tracks. Since the shader reconstructs the position of pixels based on OMAF metadata, the image in figure (b) can be assumed to be a region-wise unpacked image. Therefore, the RE module sets the rendering range of the figure (a) using the RWPK metadata, and renders the tiles of the resolved image to the cube faces of the figure (b). However, when there is a change in the viewport position, the RE module has to set different metadata for the corresponding track. In the implementation, when the manifest file is loaded, the RE module is initialized with all RWPK metadata to be prepared for all possible (extractor) tracks.
 
 ## 2. Content Creation Tools (OMAF Generator)
 
