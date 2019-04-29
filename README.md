@@ -59,7 +59,7 @@ Software in this repository implements a subset of current OMAF version 1 standa
 
 ### File Creation for HEVC-based viewport-dependent OMAF video profile with MCTS (HEVC Tiles)
 
-* Supported codecs:
+* Supported HEVC encoders:
   * [HM reference encoder](https://hevc.hhi.fraunhofer.de/svn/svn_HEVCSoftware/) (single QP only)
   * [Kvazaar](https://github.com/ultravideo/kvazaar)
   * [HHI live encoder](https://www.hhi.fraunhofer.de/en/departments/vca/technologies-and-solutions/hevc-software-and-hardware-solutions.html)
