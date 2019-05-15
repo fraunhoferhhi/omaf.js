@@ -76,7 +76,7 @@
             self.DL.onInitLoaded = function (data) { 
                 self.ME.init(self.video1, self.video2, self.MP.getMimeType(), self.lastSegNum, data); 
             }
-            self.DL.onMediaLoaded = function (data, segNum) { self.ME.processMedia(data, segNum); }
+            self.DL.onMediaLoaded = function (data, segNum) { self.ME.processMedia(data); }
             self.MP.onInit = function () {
                 let initURLs = self.MP.getVPinitSegURLs();
                 self.lastSegNum = parseInt(self.MP.getLastSegmentNr());
@@ -135,7 +135,7 @@
 
                 Log.info("main", "selected asID / trackID = " + asID + " / " + self.trackID);
 
-                self.ME.setActiveTrackID(self.trackID, self.segmentNr)
+                self.ME.setActiveTrackID(self.trackID);
 
                 let mediaURLs = self.MP.getMediaRequestsSimple(0, 0, self.segmentNr);
 

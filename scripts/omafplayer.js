@@ -305,7 +305,7 @@ OMAFPlayer.prototype.init = function(vidElement, subVidElement, renderElement, s
     this.DL.onInitLoaded = function (data) { 
         self.ME.init(self.vidElement, self.subVidElement, self.MP.getMimeType(), self.lastSegNum, data); 
     }
-    this.DL.onMediaLoaded = function (data, segNum) { self.ME.processMedia(data,segNum); }
+    this.DL.onMediaLoaded = function (data, segNum) { self.ME.processMedia(data); }
 
     this.MP.onInit = function () {
         var initURLs = self.MP.getVPinitSegURLs();
@@ -614,7 +614,7 @@ OMAFPlayer.prototype.loadNextSegment = function(){
     this.preYaw = this.yaw;
     this.prePitch = this.pitch;
     Log.info("Extractor Track ID : ", this.trackID);
-    if (this.ME.setActiveTrackID(this.trackID, this.segmentNr)) {
+    if (this.ME.setActiveTrackID(this.trackID)) {
         this.DL.loadMediaSegments(mediaURLs, (this.segmentNr++));
     }
 }
