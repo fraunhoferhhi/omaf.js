@@ -35,6 +35,10 @@ body {
     border: solid 1px #ff009d;
 }
 
+#modalMessage {
+    word-break: break-all;
+}
+
 #fraunhofer_curtain {
     position: absolute;
     margin: auto;

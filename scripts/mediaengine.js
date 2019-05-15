@@ -64,6 +64,12 @@ omaf@hhi.fraunhofer.de
 
 var logLevel = window.logLevel;
 
+var ErrorPopUp = function(msg){
+    Log.error("Error", msg);
+    $("#modalMessage").html(msg);
+    $("#warningPopup").modal();
+}
+
 function MediaEngine() {
     this.isBusy         = false;
     this.isInit         = false;
