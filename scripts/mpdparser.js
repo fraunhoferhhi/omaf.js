@@ -72,7 +72,7 @@ function MPDParser() {
     this.viewportDep = {}; // list of viewport dependencies
     this.tilesAS = {}; // list of tile AS
     this.viewPortBestRegion = {}; // this contains the best quality region vector.
-    this.lastSegNr = null; // this is set once MPD is parsed and duration + segmentTemplate data is evaluated
+    this.lastSegNr = -1; // this is set once MPD is parsed and duration + segmentTemplate data is evaluated
     this.periodDuration = 0; // in seconds
 
     // events
@@ -308,7 +308,7 @@ MPDParser.prototype.getASfromYawPitch = function (yawDeg, pitchDeg){
 
 // just download get the URLs from lowest representation
 MPDParser.prototype.getMediaRequestsSimple = function (yawDeg, pitchDeg, segNr){
-    if(segNr > this.lastSegNr){
+    if(segNr > this.lastSegNr && this.lastSegNr!=-1){
         Log.warn("MPDParser", "EOF");
         return null;
     }

@@ -737,7 +737,6 @@ MediaEngine.prototype.checkBufQ = function(){
 
             var trackID = self.manageBufferQ.front().trackID;
             if(!isSubBuf ){
-                Log.warn("checkBufQ main", segNum);
                 if(segNum == 1 && !self.isReset){
                     self.subVidElement.pause();
                     if(!self.subSourceBuffer.updating){
