@@ -147,9 +147,7 @@ MediaEngine.prototype.setActiveTrackID = function(trackID){
         return true;
     } 
     if (!(this.initSegments.hasOwnProperty(trackID))) {
-        Log.error("ME", "TrackID with 'hvc2' track type could not be found! Maybe initialization din't include such init file? hvc2 trackID=" + this.currentTrackID);
-        $("#modalMessage").html("Track(id = " + trackID + ") with 'hvc2' track type could not be found");
-        $("#warningPopup").modal();
+        ErrorPopUp("Track(id = " + trackID + ") with 'hvc2' track type could not be found");
         return false;
     }
     if(this.isBusy) {
@@ -230,9 +228,7 @@ MediaEngine.prototype.init = function (vidElement, subVidElement, mimeType, last
         this.mediaSource = new MediaSource();
         this.subMediaSource = new MediaSource();
     } else {
-        Log.error("ME", "The Media Source Extensions API is not supported.");
-        $("#modalMessage").html("This device does not support Media Source Extensions API");
-        $("#warningPopup").modal();
+        ErrorPopUp("This device does not support Media Source Extensions API");
         return;
     }
 
@@ -306,15 +302,10 @@ MediaEngine.prototype.initMSE = function(){
         if (typeof this.sourceBuffer.addEventListener === 'function') {
             Log.info("ME", "set up sourcebuffer event listeners");
             this.sourceBuffer.addEventListener('error', function(e){
-                Log.error("ME", "sourceBuffer error");
-                Log.error("ME", e);
-                $("#modalMessage").html("The soureBuffer of MSE has the following error <br> Error: " + e );
-                $("#warningPopup").modal();
+                ErrorPopUp("The soureBuffer of MSE has the following error <br> Error: " + e );
             }, false);
             this.sourceBuffer.addEventListener('abort', function (e) {
-                Log.error("ME", "sourceBuffer aborted: " + e);
-                $("#modalMessage").html("The soureBuffer of MSE is aborted <br> Error: " + e );
-                $("#warningPopup").modal();
+                ErrorPopUp("The soureBuffer of MSE is aborted <br> Error: " + e );
             }, false);
 
             var self = this;
@@ -349,9 +340,7 @@ MediaEngine.prototype.initMSE = function(){
         }
         
     } catch(ex){
-        Log.error("ME", "Can not create a sourceBuffer. Mime type not supported: mimetype=" + this.mimeType);
-        $("#modalMessage").html("This browser does not support the following mimetype <br> mimiType: " + this.mimeType + " <br> Please use another browser.");
-        $("#warningPopup").modal();
+        ErrorPopUp("This browser does not support the following mimetype <br> mimiType: " + this.mimeType + " <br> Please use another browser.");
         this.initialized = false;
         throw ex;
     }
@@ -375,15 +364,10 @@ MediaEngine.prototype.initSubMSE = function(){
         if (typeof this.subSourceBuffer.addEventListener === 'function') {
             Log.info("ME", "set up subSourceBuffer event listeners");
             this.subSourceBuffer.addEventListener('error', function(e){
-                Log.error("ME", "subSourceBuffer error");
-                Log.error("ME", e);
-                $("#modalMessage").html("The soureBuffer of MSE has the following error <br> Error: " + e );
-                $("#warningPopup").modal();
+                ErrorPopUp("The soureBuffer of MSE has the following error <br> Error: " + e );    
             }, false);
             this.subSourceBuffer.addEventListener('abort', function (e) {
-                Log.error("ME", "subSourceBuffer aborted: " + e);
-                $("#modalMessage").html("The soureBuffer of MSE is aborted <br> Error: " + e );
-                $("#warningPopup").modal();
+                ErrorPopUp("The soureBuffer of MSE is aborted <br> Error: " + e );
             }, false);
 
             var self = this;
@@ -426,9 +410,7 @@ MediaEngine.prototype.initSubMSE = function(){
         }
         
     } catch(ex){
-        Log.error("ME", "Can not create a sourceBuffer. Mime type not supported: mimetype=" + this.mimeType);
-        $("#modalMessage").html("This browser does not support the following mimetype <br> mimiType: " + this.mimeType + " <br> Please use another browser.");
-        $("#warningPopup").modal();
+        ErrorPopUp("This browser does not support the following mimetype <br> mimiType: " + this.mimeType + " <br> Please use another browser.");
         this.initialized = false;
         throw ex;
     }
@@ -1087,9 +1069,7 @@ ISOFile.prototype.getRepackagedMoov = function(){
         }
     }
     if(null == trak){
-        Log.error("MP4BoxExtension", "Could not find hvc2 track to create repackaged moov!");
-        $("#modalMessage").html("Could not find hvc2 track to create repackaged moov");
-        $("#warningPopup").modal();
+        ErrorPopUp("Could not find hvc2 track to create repackaged moov");
         return null;
     }
 

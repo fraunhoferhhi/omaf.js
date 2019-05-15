@@ -107,16 +107,12 @@ MPDParser.prototype.init = function (xmlDoc) {
         this.lastSegNr = this.getLastSegmentNr();
     }
     catch(e){
-        Log.error("MPDParser", "could not parse last segment number. Make sure you use the correct MPD (with SegmentTemplate)");
-        $("#modalMessage").html("MPDParsingError: make sure you use the correct MPD (with SegmentTemplate)");
-        $("#warningPopup").modal();
+        ErrorPopUp("Could not parse last segment number. Make sure you use the correct MPD (with SegmentTemplate)");
         return;
     }
 
     if (adaptationSets.length === 0){
-        Log.error("MPDParser", "No AdaptationSets found in the manifest");
-        $("#modalMessage").html("No AdaptationSets found in the manifest");
-        $("#warningPopup").modal();
+        ErrorPopUp("No AdaptationSets found in the manifest");
         return;
     }
 
@@ -132,9 +128,7 @@ MPDParser.prototype.init = function (xmlDoc) {
                 this.projection_type = parseInt(pr);
             }
             else if(pr && this.projection_type){
-                Log.error("MPDParser", "Multiple projection formats found!");
-                $("#modalMessage").html("Multiple projection formats found in the manifest");
-                $("#warningPopup").modal();
+                ErrorPopUp("Multiple projection formats found in the manifest");
                 return;
             }
         }
@@ -255,28 +249,22 @@ MPDParser.prototype.getVPinitSegURLs = function(){
     for (key in this.viewportAS){
         var adaptSet = this.getViewportAS(key);
         if (null == adaptSet){
-            Log.error("MPDParser", "No viewport adaptation found with id = " + key);
-            $("#modalMessage").html("No viewport adaptation found <br> AdaptationSet id = " + key);
-            $("#warningPopup").modal();
+            ErrorPopUp("No viewport adaptation found <br> AdaptationSet id = " + key);
             throw "MPDParsingError"; 
         }
         var reps = adaptSet.getElementsByTagName("Representation");
         if(reps.length !== 1){
-            Log.error("MPDParser", "Only one representation is supported for viewport adaptation sets.");
-            $("#modalMessage").html("Only one representation is supported for viewport adaptation sets <br> AdaptationSet id = " + key);
-            $("#warningPopup").modal();
+            ErrorPopUp("Only one representation is supported for viewport adaptation sets <br> AdaptationSet id = " + key);
             throw "MPDParsingError";
         }
 
         var segTemplate = reps[0].getElementsByTagName("SegmentTemplate");
         if (segTemplate.length > 1) {
-            Log.error("MPDParser", "Only one SegmentTemplate is supported inside a Representation.");
-            $("#modalMessage").html("Only one SegmentTemplate is supported inside a Representation. <br> AdaptationSet id = " + key);
-            $("#warningPopup").modal();
+            ErrorPopUp("Only one SegmentTemplate is supported inside a Representation. <br> AdaptationSet id = " + key);
             throw "MPDParsingError";
         } 
         else if(segTemplate.length === 0){
-            Log.warn("MPDParser", "Only SegmentTemplate is supported for now. Others TBD.");
+            ErrorPopUp("Only SegmentTemplate is supported for now. Others TBD.");
             throw "MPDParsingFeatrureNotImplemented";
         }
         asIDs.push(key);
@@ -318,16 +306,12 @@ MPDParser.prototype.getMediaRequestsSimple = function (yawDeg, pitchDeg, segNr){
 
     var reps = adaptSet.getElementsByTagName("Representation");
     if (reps.length !== 1) {
-        Log.error("MPDParser", "Only one representation is supported for viewport adaptation sets.");
-        $("#modalMessage").html("Only one representation is supported for viewport adaptation sets <br> AdaptationSet id = " + asID);
-        $("#warningPopup").modal();
+        ErrorPopUp("Only one representation is supported for viewport adaptation sets <br> AdaptationSet id = " + asID);
         throw "MPDParsingError";
     }
     var segTemplate = reps[0].getElementsByTagName("SegmentTemplate");
     if (segTemplate.length > 1) {
-        Log.error("MPDParser", "Only one SegmentTemplate is supported inside a Representation.");
-        $("#modalMessage").html("Only one SegmentTemplate is supported inside a Representation <br> AdaptationSet id = " + asID);
-        $("#warningPopup").modal();
+        ErrorPopUp("Only one SegmentTemplate is supported inside a Representation <br> AdaptationSet id = " + asID);
         throw "MPDParsingError";
     }
     else if (segTemplate.length === 0) {
@@ -343,9 +327,7 @@ MPDParser.prototype.getMediaRequestsSimple = function (yawDeg, pitchDeg, segNr){
         var adaptSet = this.getTileAS(dependencies[i]);
         var reps = adaptSet.getElementsByTagName("Representation");
         if (reps.length < 1) {
-            Log.error("MPDParser", "No representations found in the adaptation set id = " + dependencies[i]);
-            $("#modalMessage").html("No representations found <br> AdaptationSet id = " + dependencies[i]);
-            $("#warningPopup").modal();
+            ErrorPopUp("No representations found <br> AdaptationSet id = " + dependencies[i]);
             throw "MPDParsingError";
         }
         // no rate adaptation just pick the first one
@@ -357,9 +339,7 @@ MPDParser.prototype.getMediaRequestsSimple = function (yawDeg, pitchDeg, segNr){
         // }
 
         if (segTemplate.length > 1) {
-            Log.error("MPDParser", "Only one SegmentTemplate is supported inside a Representation.");
-            $("#modalMessage").html("Only one SegmentTemplate is supported inside a Representation <br> AdaptationSet id = " + dependencies[i]);
-            $("#warningPopup").modal();
+            ErrorPopUp("Only one SegmentTemplate is supported inside a Representation <br> AdaptationSet id = " + dependencies[i]);
             throw "MPDParsingError";
         }
         else if (segTemplate.length === 0) {
@@ -371,7 +351,6 @@ MPDParser.prototype.getMediaRequestsSimple = function (yawDeg, pitchDeg, segNr){
     }
 
     // console.log(urls); // debug
-
     return urls;
 }
 
@@ -381,24 +360,18 @@ MPDParser.prototype.getTrackIdFromInitUrl = function (initUrl) {
   for (key in this.viewportAS) {
     var adaptSet = this.getViewportAS(key);
     if (null == adaptSet) {
-        Log.error("MPDParser", "No viewport adaptation found with id = " + key);
-        $("#modalMessage").html("No viewport adaptation found <br> AdaptationSet id = " + key);
-        $("#warningPopup").modal();
+        ErrorPopUp("No viewport adaptation found <br> AdaptationSet id = " + key);
         throw "MPDParsingError";
     }
     var reps = adaptSet.getElementsByTagName("Representation");
     if (reps.length !== 1) {
-        Log.error("MPDParser", "Only one representation is supported for viewport adaptation sets.");
-        $("#modalMessage").html("Only one representation is supported for viewport adaptation sets <br> AdaptationSet id = " + key);
-        $("#warningPopup").modal();
+        ErrorPopUp("Only one representation is supported for viewport adaptation sets <br> AdaptationSet id = " + key);
         throw "MPDParsingError";
     }
 
     var segTemplate = reps[0].getElementsByTagName("SegmentTemplate");
     if (segTemplate.length > 1) {
-        Log.error("MPDParser", "Only one SegmentTemplate is supported inside a Representation.");
-        $("#modalMessage").html("Only one SegmentTemplate is supported inside a Representation <br> AdaptationSet id = " + key);
-        $("#warningPopup").modal();
+        ErrorPopUp("Only one SegmentTemplate is supported inside a Representation <br> AdaptationSet id = " + key);
         throw "MPDParsingError";
     }
     else if (segTemplate.length === 0) {
@@ -439,9 +412,7 @@ MPDParser.prototype.getFPS = function(){
         var adaptSet = this.getViewportAS(key);
         var reps = adaptSet.getElementsByTagName("Representation");
         if (reps.length !== 1) {
-            Log.error("MPDParser", "Only one representation is supported for viewport adaptation sets.");
-            $("#modalMessage").html("Only one representation is supported for viewport adaptation sets <br> AdaptationSet id = " + key);
-            $("#warningPopup").modal();
+            ErrorPopUp("Only one representation is supported for viewport adaptation sets <br> AdaptationSet id = " + key);
             throw "MPDParsingError";
         }
 
@@ -468,9 +439,7 @@ MPDParser.prototype.getMimeType = function(){
         var adaptSet = this.getViewportAS(key);
         var codecs = adaptSet.getAttribute("codecs");
         if (null == codecs) {
-            Log.error("MPDParser", "No codecs found in AdaptationSet with id = " + key);
-            $("#modalMessage").html("No codecs found <br> AdaptationSet id = " + key);
-            $("#warningPopup").modal();
+            ErrorPopUp("No codecs found <br> AdaptationSet id = " + key);
             throw "MPDParsingError";
         }
         if(null == mimeType){

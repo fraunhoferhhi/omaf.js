@@ -196,18 +196,13 @@ Renderer.prototype.init = function (projection_type, video, subVideo, renderEle,
     Log.warn("Renderer", "framePerSegment is undefined.");
   }
   if(!WEBGL.isWebGLAvailable()){
-    Log.error("Renderer", "This device or browser does not support WebGL.");
-    $("#modalMessage").html("This device or browser does not support WebGL");
-    $("#warningPopup").modal();
+    ErrorPopUp("This device or browser does not support WebGL");
     return;
   }
   if(!(window.requestAnimationFrame || window.webkitRequestAnimationFrame || window.mozRequestAnimationFrame)){
-    Log.error("Renderer", "Don't support requestAnimationFrame.");
-    $("#modalMessage").html("This device or browser does not support requestAnimationFrame method" );
-    $("#warningPopup").modal();
+    ErrorPopUp("This device or browser does not support requestAnimationFrame method" );
     return;
   }
- 
 
   var self = this;
   this.videoElement = video;
@@ -500,9 +495,7 @@ Renderer.prototype.initCubeFace = function () {
 Renderer.prototype.textureFromFloats = function (gl,float32Array) 
 {
   if(!gl.getExtension("OES_texture_float")){
-    Log.error("Renderer", "Don't support OES_texture_float");
-    $("#modalMessage").html("Don't support OES_texture_float");
-    $("#warningPopup").modal();
+    ErrorPopUp("Don't support OES_texture_float");
   }
   
   var oldActive = gl.getParameter(gl.ACTIVE_TEXTURE);
@@ -531,9 +524,7 @@ Renderer.prototype.textureFromFloats = function (gl,float32Array)
 Renderer.prototype.initRWPKInfo = function () {
 
   if (!this.allTracksRwpk[Object.keys(this.allTracksRwpk)[0]]) {
-    Log.error("Renderer", "RWPK is undefined.");
-    $("#modalMessage").html("Region wise packing metadata is undefined");
-    $("#warningPopup").modal();
+    ErrorPopUp("Region wise packing metadata is undefined");
     return;
   }
   var regionsSize = this.allTracksRwpk[Object.keys(this.allTracksRwpk)[0]].regions.length;

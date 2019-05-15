@@ -87,8 +87,7 @@ Fetcher.prototype.loadManifest = function(url){
     .then(res => {
       if (!res.ok){
         Log.error("DL", "could not fetch manifest");
-        $("#modalMessage").html("Can not download the manifest file");
-        $("#warningPopup").modal();
+        ErrorPopUp("Can not download the manifest file");
         throw "DLerror";
       }
       return res.text();
@@ -96,8 +95,7 @@ Fetcher.prototype.loadManifest = function(url){
     .then(str => (new window.DOMParser()).parseFromString(str, "text/xml"))
     .then(data => this.onManifestLoaded(data))
     .catch(err => { 
-      $("#modalMessage").html("Not available url <br> url: " + url);
-      $("#warningPopup").modal();
+      ErrorPopUp("Not available url <br> url: " + url);
       throw err; 
     });
     return true;
@@ -110,8 +108,7 @@ Fetcher.prototype.loadInitSegments = function(urlsWithASIDs){
   }
   if(!urlsWithASIDs){
     Log.error("DL", "init segment URLs are not set");
-    $("#modalMessage").html("please check the init segment urls");
-    $("#warningPopup").modal();
+    ErrorPopUp("please check the init segment urls");
     return false;
   }
 
@@ -148,9 +145,7 @@ Fetcher.prototype.loadInitSegments = function(urlsWithASIDs){
       } 
     })
     .catch(err => {
-      Log.error("DL", "Something is wrong with init segments.");
-      $("#modalMessage").html("Not available url <br> url: " + url);
-      $("#warningPopup").modal();
+      ErrorPopUp("Not available url <br> url: " + url);
       throw err;
     });
 
@@ -167,11 +162,9 @@ Fetcher.prototype.loadMediaSegments = function (urls, segNum) {
   }
   if (!urls) {
     Log.error("DL", "media segment URLs are not set");
-    $("#modalMessage").html("please check the media segment urls");
-    $("#warningPopup").modal();
+    ErrorPopUp("please check the media segment urls");
     return false;
   }
-  //Log.warn("DL",urls);
   var numOfRequests = urls.length;
   var resNum = 0;
   var retVal = [];
@@ -197,8 +190,7 @@ Fetcher.prototype.loadMediaSegments = function (urls, segNum) {
     })
     .catch(err => {
       Log.error("DL", "Something is wrong with media segments." + url);
-      //$("#modalMessage").html("Not available url <br> url: " + url);
-      //$("#warningPopup").modal();
+      //ErrorPopUp("Not available url <br> url: " + url);
       throw err;
     });
 

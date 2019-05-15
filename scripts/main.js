@@ -61,8 +61,13 @@ Einsteinufer 37
 www.hhi.fraunhofer.de/OMAF
 omaf@hhi.fraunhofer.de
 ----------------------------------------------------------------------------- */
-
 'use strict';
+
+var ErrorPopUp = function(msg){
+  Log.error("Error", msg);
+  $("#modalMessage").html(msg);
+  $("#warningPopup").modal();
+}
 
 var app = angular.module('OMAFPlayer', ['ngResource']);
 
