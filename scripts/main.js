@@ -158,7 +158,8 @@ app.controller('OMAFController', function ($scope, manifests){
   $scope.version = $scope.player.getVersion();
   
   $scope.selectedMPD = { 
-    url: 'please select DASH Manifest (MPD) or provide it\'s URL in this field'
+    //url: 'please select DASH Manifest (MPD) or provide it\'s URL in this field'
+    url: 'http://127.0.0.1:5500/live.mpd'
   };
 
   manifests.query(function (data) { $scope.availableMPDs = data.mpds; });

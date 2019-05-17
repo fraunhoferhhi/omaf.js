@@ -328,15 +328,11 @@ MediaEngine.prototype.initMSE = function(){
                     self.isRemoveBuf = false;
                     self.isReset = false;
                 }else{
-                    if(self.isLastBuf && !self.updateBuffer.length){
-                        self.onFinish();
+                    if(!self.isRemoveBuf){
+                        //self.onMediaProcessed();
                     }else{
-                        if(!self.isRemoveBuf){
-                            //self.onMediaProcessed();
-                        }else{
-                            self.isMainActive = false;
-                            self.isRemoveBuf = false;
-                        }
+                        self.isMainActive = false;
+                        self.isRemoveBuf = false;
                     }
                 }
                 if ( self.updateBuffer.length ) {
@@ -385,10 +381,7 @@ MediaEngine.prototype.initSubMSE = function(){
                     self.subMSEinitialized = true;
                     
                 }else{
-                    if(self.isLastBuf && !self.updateBuffer.length){
-                        self.onFinish();
-                        self.isRemoveBuf = false;
-                    }else if(self.isReset){
+                    if(self.isReset){
                         self.onReset();
                         self.isRemoveBuf = false;
                         self.isReset = false;
@@ -451,11 +444,8 @@ MediaEngine.prototype.getSRQRs = function(){
 MediaEngine.prototype.processMedia = function(arrayOfMoofMdats){
     var self = this;
     this.isBusy = true;
-
-    if(++this.currentSegNum === this.lastSegNum){
-        this.isLastBuf = true;
-    }
-
+    this.currentSegNum++; 
+  
     Log.info("ME", "Start repackaging of media data for trackID = " + this.currentTrackID);
    
     if(this.currentTrackID != this.switchTrackID){
@@ -814,7 +804,6 @@ MediaEngine.prototype.reset = function(isLoop){
     if(isLoop){
         this.currentTrackID = 0;
         this.isSubBuffer    = false;
-        this.isLastBuf      = false;
         this.currentSegNum  = null;     
         this.mainBufSegNum  = 0; 
         this.subBufSegNum   = 0;
@@ -837,7 +826,6 @@ MediaEngine.prototype.reset = function(isLoop){
         delete this.isMainActive;
         delete this.isSubActive;
         delete this.initialized;
-        delete this.isLastBuf;
         delete this.isReset;
         delete this.MSEinitialized;  
         delete this.subMSEinitialized;

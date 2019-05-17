@@ -68,19 +68,20 @@ function OMAFPlayer () {
     this.initialized    = false;
     this.isOninit       = false;
     this.isOnLoop       = true;
-    this.isLastBuf      = false;
     this.isReset        = false;
     this.isOnMainVid    = true;
     this.isFirstSwitch  = false;
     this.isTrackSwitch  = false;
     this.isEnterFullscreen = false;
+    this.isFirstsegment = true;
+    this.isFistPlay = true;
 
     this.MP = null; // Manifest Parser
     this.ME = null; // Media Engine
     this.DL = null; // DownLoader
     this.RE = null; // REnderer
 
-    this.segmentNr = 1;
+    this.segmentNr = 0;
     this.yaw       = 0;
     this.pitch     = 0;
     this.preTrackID     = 0;
@@ -235,26 +236,6 @@ OMAFPlayer.prototype.init = function(vidElement, subVidElement, renderElement, s
         if(self.vidElement.buffered.length){
             self.checkSubBuffer(self.vidElement.currentTime);
         }
-        /*
-        if(self.isLastBuf){
-            if(self.isOnLoop){
-                self.segmentNr = 1;
-                self.bufferOffsetTime = 0;
-                self.RE.setIsAniPause(true);
-                self.ME.removeBuf(false, true);
-                self.ME.removeBuf(true, true);
-                self.ME.reset(true);
-                self.SE.activeVideoElement("MASTER",0);
-                self.isReset = true;
-                self.isLastBuf = false;
-                self.isOnMainVid = true;
-            }  
-        }else{
-            if(self.vidElement.buffered.length){
-                self.checkSubBuffer(self.vidElement.currentTime);
-            }
-        }
-        */
     }
 
     this.vidElement.oncanplay = function() {
@@ -310,6 +291,8 @@ OMAFPlayer.prototype.init = function(vidElement, subVidElement, renderElement, s
     this.MP.onInit = function () {
         var initURLs = self.MP.getVPinitSegURLs();
         self.lastSegNum = parseInt(self.MP.getLastSegmentNr());
+        self.segmentNr = self.MP.getFirstSegmentNr();
+       
         Log.info("Player", "Fetch init urls");
         self.DL.loadInitSegments(initURLs);
     }
@@ -406,10 +389,6 @@ OMAFPlayer.prototype.init = function(vidElement, subVidElement, renderElement, s
         }
     }
 
-    this.ME.onFinish = function(){
-        self.isLastBuf = true;
-    }
-
     this.ME.onReset = function(){
         self.loadNextSegment();
     }
@@ -447,6 +426,11 @@ OMAFPlayer.prototype.isBufferFullyLoaded = function() {
  
     if( (bufferAvailable + parseInt(self.segmentDuration) ) > (self.bufferLimitTime) )
     {   Log.info("Player"," Buffer is fully loaded" ); 
+        //should update buffer logic for live streaming
+        if(self.isFistPlay){
+            self.play();
+            self.isFistPlay = false;
+        }
         return true;
     } else { 
         Log.info("Player"," Buffer is not fully loaded")        
@@ -470,6 +454,7 @@ OMAFPlayer.prototype.fillMyBuffer = function() {
         setTimeout(function(){
             self.loadNextSegment();
         }, decisionOffset);
+        
     }
     else {
         Log.info("Player","Buffer is not full yet");
@@ -585,7 +570,7 @@ OMAFPlayer.prototype.loadNextSegment = function(){
     var asID = this.MP.getASIDfromYawPitch(this.yaw, this.pitch);
     this.trackID = this.ME.getTrackIDFromASID(asID);
     
-    if(this.segmentNr == 1){
+    if(this.isFirstsegment){
         if(this.isReset){
             this.trackID = this.preTrackID;
             this.yaw = this.preYaw;
@@ -593,6 +578,7 @@ OMAFPlayer.prototype.loadNextSegment = function(){
         }
         this.RE.matchTracktoCube(this.trackID);
         this.RE.subMatchTracktoCube(this.trackID);
+        this.isFirstsegment = false;
     }else if(!this.isTrackSwitch){
         this.trackID = this.preTrackID;
         this.yaw = this.preYaw;
@@ -608,6 +594,7 @@ OMAFPlayer.prototype.loadNextSegment = function(){
             this.tIdCount = 1;
         }
     }
+    console.log(this.segmentNr);
     var mediaURLs = this.MP.getMediaRequestsSimple(this.yaw, this.pitch, this.segmentNr);
     
     this.preTrackID = this.trackID;
@@ -660,20 +647,6 @@ OMAFPlayer.prototype.checkSubBuffer = function(vidTime){
             isChanged = true;
             self.readySubRender = false;
         
-        }else if(!self.ME.isSubBufActive() && self.isOnLoop && self.isLastBuf){
-            while(!self.switchInfoQ.empty()){
-                self.switchInfoQ.dequeue();
-            }
-            self.segmentNr = 1;
-            self.bufferOffsetTime = 0; 
-            self.SE.activeVideoElement("MASTER",0);
-            self.RE.setIsAniPause(true);
-            self.ME.removeBuf(false, true);
-            self.ME.reset(true);
-            self.isReset = true;
-            self.isLastBuf = false;
-            self.isOnMainVid = true;
-            isChanged = true;
         }
         if(isChanged || (self.vidElement.currentTime != vidTime)) {
             clearInterval(self.subBufReq);
@@ -710,22 +683,6 @@ OMAFPlayer.prototype.checkMainBuffer = function(vidTime){
             isChanged = true;
             self.readyMainRender = false;
             
-        }else if(!self.ME.isMainBufActive() && self.isOnLoop && self.isLastBuf){
-            while(!self.switchInfoQ.empty()){
-                self.switchInfoQ.dequeue();
-            }
-            self.segmentNr = 1;
-            self.bufferOffsetTime = 0;
-            self.SE.activeVideoElement("MASTER",0);
-            self.RE.setIsAniPause(true);
-            self.ME.removeBuf(true, true);
-            self.ME.reset(true);
-    
-            self.isReset = true;
-            self.isLastBuf = false;
-            self.isOnMainVid = true;
-            isChanged = true;
-
         }
         if(isChanged || (self.subVidElement.currentTime != vidTime)) {
             clearInterval(self.mainBufReq);
@@ -755,7 +712,7 @@ OMAFPlayer.prototype.reset = function(){
         clearInterval(self.subBufReq);
         clearInterval(self.pauseReq);
         
-        this.segmentNr      = 1;
+        this.segmentNr      = 0;
         this.tIdCount       = 1;
         this.segDifArr      = [];
         this.isAddDif       = false;
@@ -768,6 +725,7 @@ OMAFPlayer.prototype.reset = function(){
         this.initialized = false;
         this.readyMainRender = false;
         this.readySubRender = false;
+        this.isFirstsegment = true;
     }
 }
 
