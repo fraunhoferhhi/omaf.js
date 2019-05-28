@@ -95,15 +95,12 @@
                
                 <div id="videoController" class="video-controller">
                     <!-- https://www.w3schools.com/icons/fontawesome_icons_video.asp -->
-                    <div id="playPauseBtn" class="btn-play" data-toggle="tooltip" data-placement="bottom" title="Play" ng-click="doPlayPause()">
-                        <span id="iconPlayPause" class="fa fa-play"></span>
+                    <div id="timeInfo" class="time-display" data-toggle="tooltip" data-placement="bottom" title="Play" ng-click="doTimeInfo()">
+                        <span id="timeInfoTxt"></span>
                     </div>
                     <span id="videoTime" class="time-display"></span>
                     <div id="fullscreenBtn" class="btn-fullscreen" data-toggle="tooltip" data-placement="bottom" title="Fullscreen" ng-click="doFullscreen()">
                         <span id="iconFullscreen" class="fa fa-arrows-alt"></span>
-                    </div>
-                    <div id="repeatBtn" class="btn-repeat" data-toggle="tooltip" data-placement="bottom" title="Repeat" >
-                            <span id="iconRepeat" class="fa fa-repeat" ng-click="doLoop($event)"></span>
                     </div>
                 </div>
             </div>

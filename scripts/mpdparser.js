@@ -74,7 +74,9 @@ function MPDParser() {
     this.viewPortBestRegion = {}; // this contains the best quality region vector.
     this.lastSegNr = -1; // this is set once MPD is parsed and duration + segmentTemplate data is evaluated
     this.periodDuration = 0; // in seconds
-    this.liveStartTime = null; // start time of Live streaming 
+    this.liveStartTime = null; // start time of Live streaming
+    this.startSegNum    = null; 
+    this.elapsedTime    = null;
 
     // events
     this.onInit = null;
@@ -96,17 +98,28 @@ MPDParser.prototype.init = function (xmlDoc) {
     }
     Log.info("MPDParser", "start MPD parsing");
     this.xmlDoc = xmlDoc;
+   
 
     var adaptationSets = xmlDoc.getElementsByTagName("AdaptationSet");
     var essentialProps = xmlDoc.getElementsByTagName("EssentialProperty");
-    liveStartTime = new Date(xmlDoc.getElementsByTagName("MPD")[0].getAttribute("availabilityStartTime"));
+    this.liveStartTime = new Date(xmlDoc.getElementsByTagName("MPD")[0].getAttribute("availabilityStartTime"));
+    
     // var supplementProps = xmlDoc.getElementsByTagName("SupplementalProperty");
-
-    var pDurStr = xmlDoc.getElementsByTagName("Period")[0].getAttribute("duration");
-    this.periodDuration = this.secondsFromIsoDuration(pDurStr);
+    
+    //var pDurStr = xmlDoc.getElementsByTagName("Period")[0].getAttribute("duration");
+    //this.periodDuration = this.secondsFromIsoDuration(pDurStr);
 
     try{
-        this.lastSegNr = this.getLastSegmentNr();
+        var segTemplates = xmlDoc.getElementsByTagName("SegmentTemplate");
+        var duration = parseInt(segTemplates[0].getAttribute("duration"));
+        var timeScale = parseFloat(segTemplates[0].getAttribute("timescale"));
+        var startNr = parseInt(segTemplates[0].getAttribute("startNumber"));
+
+        var currentTIme = new Date();
+        currentTIme.setHours(currentTIme.getHours() + 2); // should remove +2 hour later . it adjusts utc time for test.
+        this.elapsedTime = (currentTIme.getTime() - this.liveStartTime);
+
+        this.startSegNum = startNr + (parseInt((this.elapsedTime -((duration / timeScale * 1000))) / (duration / timeScale * 1000)));
     }
     catch(e){
         ErrorPopUp("Could not parse last segment number. Make sure you use the correct MPD (with SegmentTemplate)");
@@ -135,7 +148,6 @@ MPDParser.prototype.init = function (xmlDoc) {
             }
         }
     }
-
     // get full coverage viewport-dependent AS with hvc2
     for (var i = 0; i < adaptationSets.length; i++){
         var codecs = adaptationSets[i].getAttribute("codecs");
@@ -298,10 +310,7 @@ MPDParser.prototype.getASfromYawPitch = function (yawDeg, pitchDeg){
 
 // just download get the URLs from lowest representation
 MPDParser.prototype.getMediaRequestsSimple = function (yawDeg, pitchDeg, segNr){
-    if(segNr > this.lastSegNr && this.lastSegNr!=-1){
-        Log.warn("MPDParser", "EOF");
-        return null;
-    }
+   
     var urls = [];
     var adaptSet = this.getASfromYawPitch(yawDeg, pitchDeg);
     var asID = this.getASIDfromYawPitch(yawDeg, pitchDeg);
@@ -320,7 +329,7 @@ MPDParser.prototype.getMediaRequestsSimple = function (yawDeg, pitchDeg, segNr){
         Log.warn("MPDParser", "Only SegmentTemplate is supported for now. Others TBD.");
         throw "MPDParsingFeatrureNotImplemented";
     }
- 
+   
     // todo: check duration
     urls.push(segTemplate[0].getAttribute("media").replace("$Number$", segNr));
 
@@ -399,29 +408,41 @@ MPDParser.prototype.getLastSegmentNr = function(){
     var startNr = parseInt(segTemplates[0].getAttribute("startNumber"));
     var duration = parseInt(segTemplates[0].getAttribute("duration"));
     var timeScale = parseFloat(segTemplates[0].getAttribute("timescale"));
+    
     return this.periodDuration / (duration/timeScale) + startNr - 1;
 }
 
 MPDParser.prototype.getFirstSegmentNr = function() {
+    if(!this.startSegNum){
+        Log.warn("MPDParser", "MPD file does not have 'Start number'.");
+        return null;
+    }
+    return this.startSegNum;
+}
+
+MPDParser.prototype.getElapasedTime = function() {
+    if(!this.elapsedTime){
+        Log.warn("MPDParser", "MPD file does not have 'Start number'.");
+        return null;
+    }
+    return this.elapsedTime;
+}
+
+MPDParser.prototype.getSegmentDuration = function() {
     var segTemplates = this.xmlDoc.getElementsByTagName("SegmentTemplate");
     var duration = parseInt(segTemplates[0].getAttribute("duration"));
     var timeScale = parseFloat(segTemplates[0].getAttribute("timescale"));
-    var timeDif = this.getTimeDifference();
-    var startNr = parseInt(segTemplates[0].getAttribute("startNumber"));
-    startNr += (parseInt(timeDif / (duration / timeScale * 1000)));
 
-    return startNr;
+    return duration / timeScale * 1000;
 }
 
-MPDParser.prototype.getTimeDifference = function () {
-    if(this.liveStartTime){
+
+MPDParser.prototype.getLiveStartTime = function () {
+    if(!this.liveStartTime){
         Log.warn("MPDParser", "MPD file does not have 'availabilityStartTime'.");
         return null;
     }
-    var currentTIme = new Date();
-    var elapsedTime = (currentTIme.getTime() - liveStartTime);
-    
-    return elapsedTime;
+    return this.liveStartTime;
 }
 
 MPDParser.prototype.getFPS = function(){

@@ -69,9 +69,13 @@ function Fetcher() {
   this.onManifestLoaded = null; // onManifestLoaded(xmlDoc)
   this.onInitLoaded = null; // onInitLoaded(arrayOfBinaryObjects)
   this.onMediaLoaded = null; // onMediaLoaded(arrayOfBinaryObjects)
+  this.onInitRequestFail = null;
+  this.onMediaRequestFail = null;
+  this.onSameMediaRequest = null; 
 }
 
 Fetcher.prototype.loadManifest = function(url){
+  console.log(url)
   if (this.onManifestLoaded == null) {
     Log.error("DL", "onManifestLoaded callback not set");
     return false;
@@ -117,32 +121,44 @@ Fetcher.prototype.loadInitSegments = function(urlsWithASIDs){
   var resNum = 0;
   var retVal = [];
   var asIDs = [];
+  var resFail = true;
 
   Log.info("DL", "Fetch " + numOfRequests + " init file(s)");
-  const multiFetch = url => fetch(this.baseURL + url)
+  const multiFetch = url => fetch(this.baseURL + url,{cache: "no-store"})
     .then(res => {
       Log.debug("DL", "fetch: " + res.url);
       if (res.ok) {
         return res.arrayBuffer();
       } else {
-        throw "Can't download: " + res.url;
+        if(resFail){
+          Log.debug("DL", "response Fail: " + res.url);
+          this.onInitRequestFail();
+          resFail = false;
+        }
+        return null;
       }
     })
     .then(data => {
-      resNum++;
+      if(data){
+        resNum++;
 
-      // find out which ASid actually we just downloaded
-      for(var i=0; i<numOfRequests; i++){
-        if(urlsWithASIDs.urls[i] == url){
-          asIDs.push(urlsWithASIDs.asIDs[i]);
-          break;
+        // find out which ASid actually we just downloaded
+        for(var i=0; i<numOfRequests; i++){
+          if(urlsWithASIDs.urls[i] == url){
+            asIDs.push(urlsWithASIDs.asIDs[i]);
+            break;
+          }
         }
-      }
 
-      retVal.push(data);
-      if (resNum == numOfRequests) {
-        this.onInitLoaded({"data": retVal, "asIDs": asIDs});
-      } 
+        retVal.push(data);
+        if (resNum == numOfRequests) {
+          this.onInitLoaded({"data": retVal, "asIDs": asIDs});
+        } 
+
+      }else{
+        return;
+      }
+      
     })
     .catch(err => {
       ErrorPopUp("Not available url <br> url: " + url);
@@ -166,30 +182,47 @@ Fetcher.prototype.loadMediaSegments = function (urls, segNum) {
     return false;
   }
   var numOfRequests = urls.length;
-  var resNum = 0;
+  var resSNum = 0;
+  var resFNum = 0;
   var retVal = [];
+  var resFail = true;
 
   Log.info("DL", "Fetch " + numOfRequests + " media file(s)");
 
-  const multiFetch = url => fetch(this.baseURL + url)
+
+  const multiFetch = url => fetch(this.baseURL + url, {cache: "no-store"})
     .then(res => {
       Log.debug("DL", "fetch: " + res.url);
       if (res.ok) {
         return res.arrayBuffer();
       } else {
-        throw "Can't download: " + res.url;
+        if(resFail){
+          Log.debug("DL", "response Fail: " + res.url);
+          this.onMediaRequestFail(segNum);
+          resFail = false;
+        }
+        return null;
       }
     })
     .then(data => {
-      
-      resNum++;
-      retVal.push(data);
-      if (resNum == numOfRequests) {
-        this.onMediaLoaded(retVal, segNum);
+      if(data){
+        resSNum++;
+        retVal.push(data);
+        if (resSNum == numOfRequests) {
+          this.onMediaLoaded(retVal, segNum);
+        }
+      }else{
+        resFNum++;
+        if ((resSNum+resFNum) == numOfRequests) {
+          delete retVal;
+          retVal = null;
+        }
+        return;
       }
+      
     })
     .catch(err => {
-      Log.error("DL", "Something is wrong with media segments." + url);
+      //Log.error("DL", "Something is wrong with media segments." + url);
       //ErrorPopUp("Not available url <br> url: " + url);
       throw err;
     });
@@ -198,6 +231,13 @@ Fetcher.prototype.loadMediaSegments = function (urls, segNum) {
     .all(urls.map(multiFetch))
 
   return true;
+}
+
+Fetcher.prototype.isExistURL = function (url) {
+  fetch(this.baseURL + url, { method: 'head'})
+    .then(res =>  {
+      this.onSameMediaRequest(res.ok);
+    });
 }
 
 Fetcher.prototype.reset = function () {

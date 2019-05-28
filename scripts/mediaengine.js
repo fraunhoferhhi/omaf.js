@@ -126,7 +126,7 @@ function MediaEngine() {
     this.onReset  = null;
 
     this.downloadFile = null;
-}
+}   
 
 MediaEngine.prototype.getHvc2Info = function(trackID){
     var retVal = this.hvc2Infos[trackID];
@@ -215,7 +215,7 @@ MediaEngine.prototype.getLastMediaSegment = function() {
 }
 
 // this creates arrayOfMoovs.length number of mp4box objects parses them and destroys them
-MediaEngine.prototype.init = function (vidElement, subVidElement, mimeType, lastSegNum, dataAndASIDs) {
+MediaEngine.prototype.init = function (vidElement, subVidElement, mimeType, dataAndASIDs) {
     if (this.initialized){
         Log.warn("ME", "MediaEngine was already initialized.");
         return;
@@ -229,7 +229,7 @@ MediaEngine.prototype.init = function (vidElement, subVidElement, mimeType, last
     this.videoElement = vidElement;
     this.subVidElement = subVidElement
     this.mimeType = mimeType;
-    this.lastSegNum = lastSegNum;
+    
     if (window.MediaSource) {
         this.mediaSource = new MediaSource();
         this.subMediaSource = new MediaSource();
@@ -302,8 +302,6 @@ MediaEngine.prototype.getTrackIDFromASID = function(asID){
 MediaEngine.prototype.initMSE = function(){
     URL.revokeObjectURL(this.videoElement.src);
     try{
-        this.sourceBuffer = null;
-        delete this.sourceBuffer;
         this.sourceBuffer = this.mediaSource.addSourceBuffer(this.mimeType);
         if (typeof this.sourceBuffer.addEventListener === 'function') {
             Log.info("ME", "set up sourcebuffer event listeners");
@@ -324,7 +322,7 @@ MediaEngine.prototype.initMSE = function(){
                     self.MSEinitialized = true;
                     
                 }else if(self.isReset){
-                    self.onReset();
+                    //self.onReset();
                     self.isRemoveBuf = false;
                     self.isReset = false;
                 }else{
@@ -382,7 +380,7 @@ MediaEngine.prototype.initSubMSE = function(){
                     
                 }else{
                     if(self.isReset){
-                        self.onReset();
+                       // self.onReset();
                         self.isRemoveBuf = false;
                         self.isReset = false;
                     }else{
@@ -441,11 +439,28 @@ MediaEngine.prototype.getSRQRs = function(){
     return retVal;
 }
 
+MediaEngine.prototype.getSourceBufEnd = function(isSub){
+    var BufEnd = 0;
+    if(!isSub){
+        if(this.sourceBuffer.buffered.length){
+            BufEnd = this.sourceBuffer.buffered.end(0);
+        }
+        
+    }else{
+        if(this.subSourceBuffer.buffered.length){
+            BufEnd = this.subSourceBuffer.buffered.end(0);
+        }
+    }
+    return BufEnd;
+}
+
+
+
 MediaEngine.prototype.processMedia = function(arrayOfMoofMdats){
     var self = this;
     this.isBusy = true;
-    this.currentSegNum++; 
-  
+    this.currentSegNum++;
+    
     Log.info("ME", "Start repackaging of media data for trackID = " + this.currentTrackID);
    
     if(this.currentTrackID != this.switchTrackID){
@@ -574,9 +589,9 @@ MediaEngine.prototype.getPackagingMetadata = function(sampleInfos) {
 
 MediaEngine.prototype.getResolvedSample = function(n){
     var vRet = new ArrayBuffer();
-
+   
     var sample = this.currentMp4Box.getTrackSample(this.currentTrackID, n);
-
+   
     var NalStart = 0;
     while (NalStart < sample.data.byteLength){
         var currentNalPtr = NalStart + 4; // current nalu position 
