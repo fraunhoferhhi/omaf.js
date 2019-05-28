@@ -95,7 +95,7 @@ body {
 }
 
 video {
-    /*visibility: hidden;*/
+    visibility: hidden;
     width: 50%;
     height: auto;
 }
