@@ -120,6 +120,7 @@ function OMAFPlayer () {
     this.segmentDuration = null;
     this.bufferLimitTime = null;
     this.bufferOffsetTime = 0;
+    this.bufferMinimumTime = 1000;
 
     this.isPlaying    = false;  // for now its just 2 states: playing and not playing
     this.onInit       = null;
@@ -350,6 +351,7 @@ OMAFPlayer.prototype.init = function(vidElement, subVidElement, renderElement, s
         if (!fps) {
           fps = 30; // for now force set to 30
         }
+       // fps = 25;
         var framesPerSegment = self.MP.getFramesPerSegment(fps);
         
         self.segmentDuration = parseInt(framesPerSegment*1000/fps).toFixed(2);
@@ -463,9 +465,25 @@ OMAFPlayer.prototype.start = function(strMPD){
  
 OMAFPlayer.prototype.fillMyBuffer = function() {
     var self = this;
-    setTimeout(function(){
-        self.loadNextSegment();
-    },self.retryTimeMs * self.retryReqNum);
+
+    self = this;
+    curTime = (self.SE.getCurrentTime());
+
+    bufferAvailable = ( parseInt(self.ME.currentSegNum)*self.segmentDuration) - curTime; 
+    
+    
+    if( (bufferAvailable + parseInt(self.segmentDuration) ) > (self.bufferLimitTime) ){
+        decisionOffset  =  (bufferAvailable + parseInt(self.segmentDuration) ) - (self.bufferLimitTime);
+        setTimeout(function(){
+            self.loadNextSegment();
+        }, decisionOffset);
+    }
+    else {
+        setTimeout(function(){
+            self.loadNextSegment();
+        },self.retryTimeMs * self.retryReqNum);
+    }
+    
     
 }
 
@@ -633,7 +651,7 @@ OMAFPlayer.prototype.checkAvailBuffer = function(){
     var self = this;
     var curTime = (this.SE.getCurrentTime());
     var bufferAvailable = (parseInt(this.ME.currentSegNum)*this.segmentDuration) - curTime; 
-    if( (bufferAvailable < this.bufferLimitTime) && !this.isBusyCheckBuf){
+    if( (bufferAvailable < this.bufferMinimumTime) && !this.isBusyCheckBuf){
        
         this.isBusyCheckBuf = true;
         if(this.isOnMainVid){
@@ -641,7 +659,7 @@ OMAFPlayer.prototype.checkAvailBuffer = function(){
         }else{
             this.subVidElement.pause();
         }
-    }else if( ( bufferAvailable > parseInt(self.bufferLimitTime) + parseInt(self.segmentDuration) )&& this.isBusyCheckBuf){
+    }else if( ( bufferAvailable > parseInt(self.bufferMinimumTime) + parseInt(self.segmentDuration) )&& this.isBusyCheckBuf){
         self.isBusyCheckBuf = false;
        
         if(this.isOnMainVid){

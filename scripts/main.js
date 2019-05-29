@@ -160,6 +160,7 @@ app.controller('OMAFController', function ($scope, manifests){
   
   $scope.selectedMPD = { 
     url: 'please select DASH Manifest (MPD) or provide it\'s URL in this field'
+   
   };
 
   manifests.query(function (data) { $scope.availableMPDs = data.mpds; });
