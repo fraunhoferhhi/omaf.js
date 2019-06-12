@@ -27,7 +27,7 @@ Example usage:
 process 1017 frames of raw_video.yuv with two QPs 32 and 25 and use max 12 threads.
 
 ./create_omaf_files.py -s 1-5 -i raw_video.yuv -f 1017 -fr 30 -q 32 25 -t 12 --mode avm --codec 1 -o kvazaarEncoding
-process 1017 frames of raw_video.yuv with two QPs 32 and 25 and use max 12 threads with 3GPP Advanced Video Media profile complaint files 
+process 1017 frames of raw_video.yuv with two QPs 32 and 25 and use max 12 threads with 3GPP Advanced Video Media profile complaint files
 
 ./create_omaf_files.py -s 4-5 -i folder/with/yuvs -f 270 -fr 30 -q 32 -t 8 --codec 0 -c conf/encoder_randomaccess_main_RAP9.cfg -p Garage -o HMencodings
 only encode and package 270 frames of yuv files from 'folder/with/yuvs' directory and name the sequenze 'Garage'
@@ -504,7 +504,7 @@ def main():
 
     parser.add_argument('--mode',type=str,default='omaf', help='Generate MPD : \n'
                                                                 'omafvd:  MPEG-OMAF viewport dependent profile\n'
-                                                                'avm:  3GPP Advance Media Video profile')
+                                                                'avm:  3GPP Advanced Media Video profile')
 
     args = parser.parse_args()
 
