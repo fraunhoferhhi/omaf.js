@@ -26,6 +26,9 @@ Example usage:
 ./create_omaf_files.py -s 1-5 -i raw_video.yuv -f 1017 -fr 30 -q 32 25 -t 12 --codec 1 -o kvazaarEncoding
 process 1017 frames of raw_video.yuv with two QPs 32 and 25 and use max 12 threads.
 
+./create_omaf_files.py -s 1-5 -i raw_video.yuv -f 1017 -fr 30 -q 32 25 -t 12 --mode avm --codec 1 -o kvazaarEncoding
+process 1017 frames of raw_video.yuv with two QPs 32 and 25 and use max 12 threads with 3GPP Advanced Video Media profile complaint files
+
 ./create_omaf_files.py -s 4-5 -i folder/with/yuvs -f 270 -fr 30 -q 32 -t 8 --codec 0 -c conf/encoder_randomaccess_main_RAP9.cfg -p Garage -o HMencodings
 only encode and package 270 frames of yuv files from 'folder/with/yuvs' directory and name the sequenze 'Garage'
 """
@@ -396,13 +399,13 @@ def get_step4_cmd(bin_dir, input_dir, output_dir, file_prefix, qps, fps, frame_c
     return cmds
 
 
-def get_step5_cmd(bin_dir, input_dir, output_dir, qps, frame_cnt, fps, file_prefix, guardband_size):
+def get_step5_cmd(mode, bin_dir, input_dir, output_dir, qps, frame_cnt, fps, file_prefix, guardband_size):
     cmd = os.path.join(bin_dir, 'hevc2omaf')
     if not os.path.exists(cmd):
         print "\"{}\" not found".format(cmd)
         return None
-    cmd += " --inputDir {} --outputDir {} --QP {} --duration {} --fps {} --inputFilePrefix {}" \
-           " --guardbands {}".format(input_dir, output_dir, ' '.join(str(q) for q in qps), frame_cnt, fps,
+    cmd += " --mode {} --inputDir {} --outputDir {} --QP {} --duration {} --fps {} --inputFilePrefix {}" \
+           " --guardbands {}".format(mode, input_dir, output_dir, ' '.join(str(q) for q in qps), frame_cnt, fps,
                                      file_prefix, guardband_size)
     return cmd
 
@@ -462,7 +465,7 @@ def main():
     print "OMAF file creation script version {}\n".format(__version__)
     # COMMAND LINE STUFF
     parser = argparse.ArgumentParser(formatter_class=argparse.RawTextHelpFormatter,
-                                     description='Create OMAF viewport-dependent profile mp4 files and DASH MPD.\n\n'
+                                     description='Create OMAF viewport-dependent profile/ 3GPP Advance media  mp4 files and DASH MPD.\n\n'
                                                  'This script can perform following steps:\n'
                                                  '  Step 1 - Projection convertion: ERP yuv to high res CMP yuv\n'
                                                  '  Step 2 - ScStep ale down: highres CMP yuv to additional lowres CMP yuv\n'
@@ -499,6 +502,10 @@ def main():
                                                              '  1 = kvazaar\n'
                                                              '  2 = HHI encoder')
 
+    parser.add_argument('--mode',type=str,default='omaf', help='Generate MPD : \n'
+                                                                'omafvd:  MPEG-OMAF viewport dependent profile\n'
+                                                                'avm:  3GPP Advanced Media Video profile')
+
     args = parser.parse_args()
 
     # check params
@@ -520,6 +527,14 @@ def main():
         print "WARNING: Multiple QPs are not supported for now. HM Encoder needs to be updated for this. " \
               "Continue now with QP={}".format(args.QP[0])
         args.QP = [args.QP[0]]
+    # complaint stream mode
+    if args.mode == str("omafvd"):
+        print "Generating MPEG-OMAF viewport dependent complaint streams"
+    elif args.mode == str("avm"):
+        print "Generating 3GPP Advance Media Profile complaint streams "
+    else:
+        print "Error: please provide a correct mode type"
+
 
     bin_dir = None
     if sys.platform.startswith('darwin'):
@@ -598,7 +613,7 @@ def main():
             make_dirs_if_not_exist(omaf_dir)
 
             print_message("Step 5 (OMAF packaging)")
-            cmd = get_step5_cmd(bin_dir, next_input, omaf_dir, args.QP, args.FramesToBeEncoded, args.FrameRate,
+            cmd = get_step5_cmd(args.mode, bin_dir, next_input, omaf_dir, args.QP, args.FramesToBeEncoded, args.FrameRate,
                                 filename_prefix, args.GuardBandSize)
             print "command: {}".format(cmd)
             execute_cmd(cmd)

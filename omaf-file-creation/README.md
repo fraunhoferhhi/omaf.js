@@ -90,6 +90,10 @@ Use HM encoder and only encode and package 270 frames of yuv files from 'folder/
 
     ./create_omaf_files.py -s 4-5 -i folder/with/yuvs -f 270 -fr 30 -q 32 -t 8 --codec 0 -c conf/encoder_randomaccess_main_RAP9.cfg -p Garage -o HMencodings
 
+Use HM encoder and only encode and package 270 frames of yuv files from 'folder/with/yuvs' directory and name the sequence 'Garage' with 3GPP Advance Video Media profile :
+
+        ./create_omaf_files.py -s 4-5 -i folder/with/yuvs -f 270 -fr 30 -q 32 -t 8 --mode avm --codec 0 -c conf/encoder_randomaccess_main_RAP9.cfg -p Garage -o HMencodings
+
 ## License
 
 Please see [LICENSE.txt](./LICENSE.txt) file for the terms of use of the contents of this repository.
