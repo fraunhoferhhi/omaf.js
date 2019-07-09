@@ -69,13 +69,9 @@ function Fetcher() {
   this.onManifestLoaded = null; // onManifestLoaded(xmlDoc)
   this.onInitLoaded = null; // onInitLoaded(arrayOfBinaryObjects)
   this.onMediaLoaded = null; // onMediaLoaded(arrayOfBinaryObjects)
-  this.onInitRequestFail = null;
-  this.onMediaRequestFail = null;
-  this.onSameMediaRequest = null; 
 }
 
 Fetcher.prototype.loadManifest = function(url){
-  console.log(url)
   if (this.onManifestLoaded == null) {
     Log.error("DL", "onManifestLoaded callback not set");
     return false;
@@ -91,7 +87,8 @@ Fetcher.prototype.loadManifest = function(url){
     .then(res => {
       if (!res.ok){
         Log.error("DL", "could not fetch manifest");
-        ErrorPopUp("Can not download the manifest file");
+        $("#modalMessage").html("Can not download the manifest file");
+        $("#warningPopup").modal();
         throw "DLerror";
       }
       return res.text();
@@ -99,7 +96,8 @@ Fetcher.prototype.loadManifest = function(url){
     .then(str => (new window.DOMParser()).parseFromString(str, "text/xml"))
     .then(data => this.onManifestLoaded(data))
     .catch(err => { 
-      ErrorPopUp("Not available url <br> url: " + url);
+      $("#modalMessage").html("Not available url <br> url: " + url);
+      $("#warningPopup").modal();
       throw err; 
     });
     return true;
@@ -112,7 +110,8 @@ Fetcher.prototype.loadInitSegments = function(urlsWithASIDs){
   }
   if(!urlsWithASIDs){
     Log.error("DL", "init segment URLs are not set");
-    ErrorPopUp("please check the init segment urls");
+    $("#modalMessage").html("please check the init segment urls");
+    $("#warningPopup").modal();
     return false;
   }
 
@@ -124,7 +123,7 @@ Fetcher.prototype.loadInitSegments = function(urlsWithASIDs){
   var resFail = true;
 
   Log.info("DL", "Fetch " + numOfRequests + " init file(s)");
-  const multiFetch = url => fetch(this.baseURL + url,{cache: "no-store"})
+  const multiFetch = url => fetch(this.baseURL + url)
     .then(res => {
       Log.debug("DL", "fetch: " + res.url);
       if (res.ok) {
@@ -139,29 +138,25 @@ Fetcher.prototype.loadInitSegments = function(urlsWithASIDs){
       }
     })
     .then(data => {
-      if(data){
-        resNum++;
+      resNum++;
 
-        // find out which ASid actually we just downloaded
-        for(var i=0; i<numOfRequests; i++){
-          if(urlsWithASIDs.urls[i] == url){
-            asIDs.push(urlsWithASIDs.asIDs[i]);
-            break;
-          }
+      // find out which ASid actually we just downloaded
+      for(var i=0; i<numOfRequests; i++){
+        if(urlsWithASIDs.urls[i] == url){
+          asIDs.push(urlsWithASIDs.asIDs[i]);
+          break;
         }
-
-        retVal.push(data);
-        if (resNum == numOfRequests) {
-          this.onInitLoaded({"data": retVal, "asIDs": asIDs});
-        } 
-
-      }else{
-        return;
       }
-      
+
+      retVal.push(data);
+      if (resNum == numOfRequests) {
+        this.onInitLoaded({"data": retVal, "asIDs": asIDs});
+      } 
     })
     .catch(err => {
-      ErrorPopUp("Not available url <br> url: " + url);
+      Log.error("DL", "Something is wrong with init segments.");
+      $("#modalMessage").html("Not available url <br> url: " + url);
+      $("#warningPopup").modal();
       throw err;
     });
 
@@ -178,9 +173,11 @@ Fetcher.prototype.loadMediaSegments = function (urls, segNum) {
   }
   if (!urls) {
     Log.error("DL", "media segment URLs are not set");
-    ErrorPopUp("please check the media segment urls");
+    $("#modalMessage").html("please check the media segment urls");
+    $("#warningPopup").modal();
     return false;
   }
+  //Log.warn("DL",urls);
   var numOfRequests = urls.length;
   var resSNum = 0;
   var resFNum = 0;
@@ -189,8 +186,7 @@ Fetcher.prototype.loadMediaSegments = function (urls, segNum) {
 
   Log.info("DL", "Fetch " + numOfRequests + " media file(s)");
 
-
-  const multiFetch = url => fetch(this.baseURL + url, {cache: "no-store"})
+  const multiFetch = url => fetch(this.baseURL + url)
     .then(res => {
       Log.debug("DL", "fetch: " + res.url);
       if (res.ok) {
@@ -205,6 +201,7 @@ Fetcher.prototype.loadMediaSegments = function (urls, segNum) {
       }
     })
     .then(data => {
+      
       if(data){
         resSNum++;
         retVal.push(data);
@@ -219,11 +216,11 @@ Fetcher.prototype.loadMediaSegments = function (urls, segNum) {
         }
         return;
       }
-      
     })
     .catch(err => {
       //Log.error("DL", "Something is wrong with media segments." + url);
-      //ErrorPopUp("Not available url <br> url: " + url);
+      //$("#modalMessage").html("Not available url <br> url: " + url);
+      //$("#warningPopup").modal();
       throw err;
     });
 
@@ -231,13 +228,6 @@ Fetcher.prototype.loadMediaSegments = function (urls, segNum) {
     .all(urls.map(multiFetch))
 
   return true;
-}
-
-Fetcher.prototype.isExistURL = function (url) {
-  fetch(this.baseURL + url, { method: 'head'})
-    .then(res =>  {
-      this.onSameMediaRequest(res.ok);
-    });
 }
 
 Fetcher.prototype.reset = function () {

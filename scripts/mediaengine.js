@@ -64,12 +64,6 @@ omaf@hhi.fraunhofer.de
 
 var logLevel = window.logLevel;
 
-var ErrorPopUp = function(msg){
-    Log.error("Error", msg);
-    $("#modalMessage").html(msg);
-    $("#warningPopup").modal();
-}
-
 function MediaEngine() {
     this.isBusy         = false;
     this.isInit         = false;
@@ -91,11 +85,10 @@ function MediaEngine() {
     this.currentTrackID = null;     // hvc2_trackID which is selected for playback
     this.switchTrackID  = null;
     this.currentSegNum  = 0;     // segment number which is selected for playback
-    this.preSegNum      = 0;
-    this.lastSegNum     = -1;
+    this.lastSegNum     = 0;
     this.mainBufSegNum  = 0; 
     this.subBufSegNum   = 0;
-    
+    this.preSegNum      = 0;
     this.trackRefs      = null;     // track references (list of trackIDs currentTrackID depends on)
     this.currentMp4Box  = null;     // an active instance of mp4box.js
     this.nextFileStart  = 0;
@@ -126,7 +119,7 @@ function MediaEngine() {
     this.onReset  = null;
 
     this.downloadFile = null;
-}   
+}
 
 MediaEngine.prototype.getHvc2Info = function(trackID){
     var retVal = this.hvc2Infos[trackID];
@@ -148,12 +141,17 @@ MediaEngine.prototype.getTrackReferences = function(trackID){
     return retVal;
 }
 
-MediaEngine.prototype.setActiveTrackID = function(trackID){
+MediaEngine.prototype.setActiveTrackID = function(trackID, segNum){
+    if(segNum > this.lastSegNum && this.lastSegNum > 0){
+        return false;
+    }
     if(this.currentTrackID===trackID){
         return true;
     } 
     if (!(this.initSegments.hasOwnProperty(trackID))) {
-        ErrorPopUp("Track(id = " + trackID + ") with 'hvc2' track type could not be found");
+        Log.error("ME", "TrackID with 'hvc2' track type could not be found! Maybe initialization din't include such init file? hvc2 trackID=" + this.currentTrackID);
+        $("#modalMessage").html("Track(id = " + trackID + ") with 'hvc2' track type could not be found");
+        $("#warningPopup").modal();
         return false;
     }
     if(this.isBusy) {
@@ -177,8 +175,11 @@ MediaEngine.prototype.setActiveTrackID = function(trackID){
             }
         }
         this.switchTrackID = trackID;
+        this.preSegNum  = 1;
     }
-
+    if(segNum == 1){
+        this.switchTrackID = trackID;
+    }
     this.currentTrackID = trackID;
     this.trackRefs = this.getTrackReferences(trackID);
     return true;
@@ -215,7 +216,7 @@ MediaEngine.prototype.getLastMediaSegment = function() {
 }
 
 // this creates arrayOfMoovs.length number of mp4box objects parses them and destroys them
-MediaEngine.prototype.init = function (vidElement, subVidElement, mimeType, dataAndASIDs) {
+MediaEngine.prototype.init = function (vidElement, subVidElement, mimeType, lastSegNum, dataAndASIDs) {
     if (this.initialized){
         Log.warn("ME", "MediaEngine was already initialized.");
         return;
@@ -229,12 +230,14 @@ MediaEngine.prototype.init = function (vidElement, subVidElement, mimeType, data
     this.videoElement = vidElement;
     this.subVidElement = subVidElement
     this.mimeType = mimeType;
-    
+    this.lastSegNum = lastSegNum;
     if (window.MediaSource) {
         this.mediaSource = new MediaSource();
         this.subMediaSource = new MediaSource();
     } else {
-        ErrorPopUp("This device does not support Media Source Extensions API");
+        Log.error("ME", "The Media Source Extensions API is not supported.");
+        $("#modalMessage").html("This device does not support Media Source Extensions API");
+        $("#warningPopup").modal();
         return;
     }
 
@@ -302,14 +305,21 @@ MediaEngine.prototype.getTrackIDFromASID = function(asID){
 MediaEngine.prototype.initMSE = function(){
     URL.revokeObjectURL(this.videoElement.src);
     try{
+        this.sourceBuffer = null;
+        delete this.sourceBuffer;
         this.sourceBuffer = this.mediaSource.addSourceBuffer(this.mimeType);
         if (typeof this.sourceBuffer.addEventListener === 'function') {
             Log.info("ME", "set up sourcebuffer event listeners");
             this.sourceBuffer.addEventListener('error', function(e){
-                ErrorPopUp("The soureBuffer of MSE has the following error <br> Error: " + e );
+                Log.error("ME", "sourceBuffer error");
+                Log.error("ME", e);
+                $("#modalMessage").html("The soureBuffer of MSE has the following error <br> Error: " + e );
+                $("#warningPopup").modal();
             }, false);
             this.sourceBuffer.addEventListener('abort', function (e) {
-                ErrorPopUp("The soureBuffer of MSE is aborted <br> Error: " + e );
+                Log.error("ME", "sourceBuffer aborted: " + e);
+                $("#modalMessage").html("The soureBuffer of MSE is aborted <br> Error: " + e );
+                $("#warningPopup").modal();
             }, false);
 
             var self = this;
@@ -322,15 +332,19 @@ MediaEngine.prototype.initMSE = function(){
                     self.MSEinitialized = true;
                     
                 }else if(self.isReset){
-                    //self.onReset();
+                    self.onReset();
                     self.isRemoveBuf = false;
                     self.isReset = false;
                 }else{
-                    if(!self.isRemoveBuf){
-                        //self.onMediaProcessed();
+                    if(self.isLastBuf && !self.updateBuffer.length){
+                        self.onFinish();
                     }else{
-                        self.isMainActive = false;
-                        self.isRemoveBuf = false;
+                        if(!self.isRemoveBuf){
+                            //self.onMediaProcessed();
+                        }else{
+                            self.isMainActive = false;
+                            self.isRemoveBuf = false;
+                        }
                     }
                 }
                 if ( self.updateBuffer.length ) {
@@ -340,7 +354,9 @@ MediaEngine.prototype.initMSE = function(){
         }
         
     } catch(ex){
-        ErrorPopUp("This browser does not support the following mimetype <br> mimiType: " + this.mimeType + " <br> Please use another browser.");
+        Log.error("ME", "Can not create a sourceBuffer. Mime type not supported: mimetype=" + this.mimeType);
+        $("#modalMessage").html("This browser does not support the following mimetype <br> mimiType: " + this.mimeType + " <br> Please use another browser.");
+        $("#warningPopup").modal();
         this.initialized = false;
         throw ex;
     }
@@ -364,10 +380,15 @@ MediaEngine.prototype.initSubMSE = function(){
         if (typeof this.subSourceBuffer.addEventListener === 'function') {
             Log.info("ME", "set up subSourceBuffer event listeners");
             this.subSourceBuffer.addEventListener('error', function(e){
-                ErrorPopUp("The soureBuffer of MSE has the following error <br> Error: " + e );    
+                Log.error("ME", "subSourceBuffer error");
+                Log.error("ME", e);
+                $("#modalMessage").html("The soureBuffer of MSE has the following error <br> Error: " + e );
+                $("#warningPopup").modal();
             }, false);
             this.subSourceBuffer.addEventListener('abort', function (e) {
-                ErrorPopUp("The soureBuffer of MSE is aborted <br> Error: " + e );
+                Log.error("ME", "subSourceBuffer aborted: " + e);
+                $("#modalMessage").html("The soureBuffer of MSE is aborted <br> Error: " + e );
+                $("#warningPopup").modal();
             }, false);
 
             var self = this;
@@ -379,8 +400,11 @@ MediaEngine.prototype.initSubMSE = function(){
                     self.subMSEinitialized = true;
                     
                 }else{
-                    if(self.isReset){
-                       // self.onReset();
+                    if(self.isLastBuf && !self.updateBuffer.length){
+                        self.onFinish();
+                        self.isRemoveBuf = false;
+                    }else if(self.isReset){
+                        self.onReset();
                         self.isRemoveBuf = false;
                         self.isReset = false;
                     }else{
@@ -407,7 +431,9 @@ MediaEngine.prototype.initSubMSE = function(){
         }
         
     } catch(ex){
-        ErrorPopUp("This browser does not support the following mimetype <br> mimiType: " + this.mimeType + " <br> Please use another browser.");
+        Log.error("ME", "Can not create a sourceBuffer. Mime type not supported: mimetype=" + this.mimeType);
+        $("#modalMessage").html("This browser does not support the following mimetype <br> mimiType: " + this.mimeType + " <br> Please use another browser.");
+        $("#warningPopup").modal();
         this.initialized = false;
         throw ex;
     }
@@ -439,36 +465,29 @@ MediaEngine.prototype.getSRQRs = function(){
     return retVal;
 }
 
-MediaEngine.prototype.getSourceBufEnd = function(isSub){
-    var BufEnd = 0;
-    if(!isSub){
-        if(this.sourceBuffer.buffered.length){
-            BufEnd = this.sourceBuffer.buffered.end(0);
-        }
-        
-    }else{
-        if(this.subSourceBuffer.buffered.length){
-            BufEnd = this.subSourceBuffer.buffered.end(0);
-        }
-    }
-    return BufEnd;
-}
-
-
-
-MediaEngine.prototype.processMedia = function(arrayOfMoofMdats){
+MediaEngine.prototype.processMedia = function (arrayOfMoofMdats, segNum){
+    //this.currentSegNum = segNum;
     var self = this;
     this.isBusy = true;
     this.currentSegNum++;
-    
+   // Log.warn("ME","processMedia segnum : " + segNum +  " the track ID is : "+ this.currentTrackID);
+
+
+    if(this.currentSegNum == this.lastSegNum && this.lastSegNum > 0){
+        this.isLastBuf = true;
+    }
+
     Log.info("ME", "Start repackaging of media data for trackID = " + this.currentTrackID);
    
     if(this.currentTrackID != this.switchTrackID){
+        
+        var difSegNum =  this.currentSegNum - this.preSegNum ;
+        //Log.warn("ME","processMedia segnum : " + difSegNum +  " the track ID is : "+ this.currentTrackID);
+        this.preSegNum = this.currentSegNum;
         this.isSubBuffer = !this.isSubBuffer;
         this.nextDecodeTime = 0;
-        this.onSwitchTrack(this.currentTrackID, this.currentSegNum, this.currentSegNum-this.preSegNum);
-        this.preSegNum = this.currentSegNum;
         this.switchTrackID = this.currentTrackID;
+        this.onSwitchTrack(this.currentTrackID, this.currentSegNum, difSegNum);
     }
 
     this.resetActiveMp4Box(this.currentTrackID);
@@ -506,7 +525,9 @@ MediaEngine.prototype.processMedia = function(arrayOfMoofMdats){
     };
     this.manageBufferQ.enqueue(bufObj);
 
-    this.onMediaProcessed();
+   
+        this.onMediaProcessed();
+    
 }
 
 MediaEngine.prototype.packageBitstream = function(bitstream){
@@ -589,9 +610,9 @@ MediaEngine.prototype.getPackagingMetadata = function(sampleInfos) {
 
 MediaEngine.prototype.getResolvedSample = function(n){
     var vRet = new ArrayBuffer();
-   
+
     var sample = this.currentMp4Box.getTrackSample(this.currentTrackID, n);
-   
+
     var NalStart = 0;
     while (NalStart < sample.data.byteLength){
         var currentNalPtr = NalStart + 4; // current nalu position 
@@ -729,7 +750,9 @@ MediaEngine.prototype.checkBufQ = function(){
             var segNum = self.manageBufferQ.front().segNum;
 
             var trackID = self.manageBufferQ.front().trackID;
+            //Log.warn("checkBufQ", segNum);
             if(!isSubBuf ){
+                Log.warn("checkBufQ main", segNum);
                 if(segNum == 1 && !self.isReset){
                     self.subVidElement.pause();
                     if(!self.subSourceBuffer.updating){
@@ -760,6 +783,7 @@ MediaEngine.prototype.checkBufQ = function(){
                     }
                 }
             }else{
+                //Log.warn("checkBufQ sub", segNum);
                if(!self.isSubActive){
                     if(!self.subSourceBuffer.updating && !self.subUpdateBuffer.length){
                         self.subSourceBuffer.appendBuffer(mediaData);
@@ -779,10 +803,11 @@ MediaEngine.prototype.checkBufQ = function(){
                         }
                         self.subBufSegNum = segNum;
                         self.manageBufferQ.dequeue();
+
                     }
                 }
-            }
-        }
+            }   
+        }       
      }, 200) // todo: get rid of this magic value
 }
 
@@ -819,11 +844,12 @@ MediaEngine.prototype.reset = function(isLoop){
     if(isLoop){
         this.currentTrackID = 0;
         this.isSubBuffer    = false;
-        this.currentSegNum  = null;     
+        this.isLastBuf      = false;
+        this.currentSegNum  = 0;     
         this.mainBufSegNum  = 0; 
         this.subBufSegNum   = 0;
         this.nextDecodeTime = 0; 
-        this.preSegNum  = 0;
+        this.preSegNum  = 1;
         this.isMainActive   = true;
 
     
@@ -841,6 +867,7 @@ MediaEngine.prototype.reset = function(isLoop){
         delete this.isMainActive;
         delete this.isSubActive;
         delete this.initialized;
+        delete this.isLastBuf;
         delete this.isReset;
         delete this.MSEinitialized;  
         delete this.subMSEinitialized;
@@ -1078,7 +1105,9 @@ ISOFile.prototype.getRepackagedMoov = function(){
         }
     }
     if(null == trak){
-        ErrorPopUp("Could not find hvc2 track to create repackaged moov");
+        Log.error("MP4BoxExtension", "Could not find hvc2 track to create repackaged moov!");
+        $("#modalMessage").html("Could not find hvc2 track to create repackaged moov");
+        $("#warningPopup").modal();
         return null;
     }
 

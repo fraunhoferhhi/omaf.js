@@ -68,22 +68,20 @@ function OMAFPlayer () {
     this.initialized    = false;
     this.isOninit       = false;
     this.isOnLoop       = true;
+    this.isLastBuf      = false;
     this.isReset        = false;
     this.isOnMainVid    = true;
     this.isFirstSwitch  = false;
     this.isTrackSwitch  = false;
     this.isEnterFullscreen = false;
     this.isFirstsegment = true;
-    this.isFistPlay = true;
-    this.isWorkingCheckMainBuffer  = false;
-    this.isBusyCheckBuf = false;
 
     this.MP = null; // Manifest Parser
     this.ME = null; // Media Engine
     this.DL = null; // DownLoader
     this.RE = null; // REnderer
 
-    this.segmentNr = 0;
+    this.segmentNr = 1;
     this.yaw       = 0;
     this.pitch     = 0;
     this.preTrackID     = 0;
@@ -93,21 +91,17 @@ function OMAFPlayer () {
     this.segDifArr      = [];
     this.retryTimeMs    = 100;
     this.retryReqNum    = 1;
+    this.elapasedTime   = 0;
     this.isAddDif       = false;
     this.mainBufReq     = null;
     this.subBufReq      = null;
     this.pauseReq       = null;
-    this.start_date     = null;
-    this.start_hh       = null;
-    this.start_mm       = null;
-    this.start_ss       = null;
-   
+
     this.vidElement = null;
     this.subVidElement  = null;
     this.renderElement = null;
     this.subRenderElemet = null;
     this.cameraElement  = null;
-    this.playTimeElement    = null;
     this.videoController = null;
     this.videoControllerVisibleTimeout = 0;
     this.mouseMoveHandler = null;
@@ -120,7 +114,6 @@ function OMAFPlayer () {
     this.segmentDuration = null;
     this.bufferLimitTime = null;
     this.bufferOffsetTime = 0;
-    this.bufferMinimumTime = 1000;
 
     this.isPlaying    = false;  // for now its just 2 states: playing and not playing
     this.onInit       = null;
@@ -140,7 +133,7 @@ OMAFPlayer.prototype.setTrackSwitch = function(flag){
     this.isTrackSwitch = flag;
 }
 
-OMAFPlayer.prototype.init = function(vidElement, subVidElement, renderElement, subRenderElement, cameraElement, playTimeElement,bufferLimit){
+OMAFPlayer.prototype.init = function(vidElement, subVidElement, renderElement, subRenderElement, cameraElement, bufferLimit){
     if (this.initialized){
         Log.warn("Player", "OMAF Player was already initialized.");
         return;
@@ -164,7 +157,6 @@ OMAFPlayer.prototype.init = function(vidElement, subVidElement, renderElement, s
     this.renderElement = renderElement;
     this.subRenderElement = subRenderElement;
     this.cameraElement = cameraElement;
-    this.playTimeElement = playTimeElement;
     this.renderElement.style.zIndex = "10";
     this.subRenderElement.style.zIndex = "8";
     this.SE.activeVideoElement = function(active, segNum) {
@@ -216,12 +208,11 @@ OMAFPlayer.prototype.init = function(vidElement, subVidElement, renderElement, s
                     }
                 },timeDif);
             }
-        }else if(self.isPlaying && self.isOnMainVid){
-            //self.checkMainBuffer(self.vidElement.currentTime, self.ME.getSourceBufEnd(false));
         }
     }
 
     this.subVidElement.onpause = function() {
+        
         if(self.isPlaying && self.isEnterFullscreen){
             self.isEnterFullscreen = false;
             var timeDif = 100;
@@ -240,20 +231,17 @@ OMAFPlayer.prototype.init = function(vidElement, subVidElement, renderElement, s
     
     this.vidElement.onwaiting = function() {
         if(self.vidElement.buffered.length){
-           
-            self.checkMainBuffer(self.vidElement.currentTime, 0);
+            self.checkSubBuffer(self.vidElement.currentTime);
         }     
     }
 
     this.vidElement.onended = function() {
         if(self.vidElement.buffered.length){
-           
-            self.checkMainBuffer(self.vidElement.currentTime, 0);
+            self.checkSubBuffer(self.vidElement.currentTime);
         }
     }
 
     this.vidElement.oncanplay = function() {
-      
         if(self.isReset){
             clearInterval(self.mainBufReq);
             clearInterval(self.subBufReq);
@@ -269,15 +257,15 @@ OMAFPlayer.prototype.init = function(vidElement, subVidElement, renderElement, s
         }
         self.readyMainRender = true;
     }
+
     this.subVidElement.onwaiting = function() {
         if(self.subVidElement.buffered.length){
-            self.checkSubBuffer(self.subVidElement.currentTime);
+            self.checkMainBuffer(self.subVidElement.currentTime);
         }
     }
 
     this.subVidElement.oncanplay = function() {
         if(!self.readyInitRender){
-         
             self.SE.activeVideoElement("MASTER",0);
             self.RE.animate();
     
@@ -291,7 +279,7 @@ OMAFPlayer.prototype.init = function(vidElement, subVidElement, renderElement, s
 
     this.subVidElement.onended = function() {
         if(self.subVidElement.buffered.length){
-            self.checkSubBuffer(self.subVidElement.currentTime);
+            self.checkMainBuffer(self.subVidElement.currentTime);
         }
     }
     
@@ -300,11 +288,9 @@ OMAFPlayer.prototype.init = function(vidElement, subVidElement, renderElement, s
     this.DL.onManifestLoaded = function (mpd) { self.MP.init(mpd); }
     this.DL.onInitLoaded = function (data) { 
         self.retryReqNum = 1;
-        self.ME.init(self.vidElement, self.subVidElement, self.MP.getMimeType(), data); 
+        self.ME.init(self.vidElement, self.subVidElement, self.MP.getMimeType(), self.lastSegNum, data); 
     }
-    this.DL.onMediaLoaded = function (data) { 
-        self.ME.processMedia(data); 
-    }
+    this.DL.onMediaLoaded = function (data, segNum) { self.ME.processMedia(data,segNum); }
 
     this.DL.onInitRequestFail = function () {
         if(self.retryReqNum == 10){
@@ -323,24 +309,17 @@ OMAFPlayer.prototype.init = function(vidElement, subVidElement, renderElement, s
             ErrorPopUp("Can't download MediaSegment");
             return;
         }
+      
         self.segmentNr = SegNum;
         self.retryReqNum++;
         self.fillMyBuffer();
     }
-    
+
     this.MP.onInit = function () {
         var initURLs = self.MP.getVPinitSegURLs();
         self.segmentNr = self.MP.getFirstSegmentNr();
-        //self.segmentNr = 1;
-
-        self.start_date = self.MP.getLiveStartTime();
-        self.start_hh = self.start_date.getHours();
-        self.start_mm = self.start_date.getMinutes();
-        self.start_ss = self.start_date.getSeconds();
-        if (self.start_hh < 10) {self.start_hh = "0"+self.start_hh;}
-        if (self.start_mm < 10) {self.start_mm = "0"+self.start_mm;}
-        if (self.start_ss < 10) {self.start_ss = "0"+self.start_ss;}
-       
+        //self.segmentNr = 90;
+        self.lastSegNum = parseInt(self.MP.getLastSegmentNr());
         Log.info("Player", "Fetch init urls");
         self.DL.loadInitSegments(initURLs);
     }
@@ -351,11 +330,10 @@ OMAFPlayer.prototype.init = function(vidElement, subVidElement, renderElement, s
         if (!fps) {
           fps = 30; // for now force set to 30
         }
-       // fps = 25;
         var framesPerSegment = self.MP.getFramesPerSegment(fps);
-        
-        self.segmentDuration = parseInt(framesPerSegment*1000/fps).toFixed(2);
 
+        self.segmentDuration = parseInt(framesPerSegment*1000/fps).toFixed(2);
+    
         var RWPKs = self.ME.getRWPKs();
 
         var SRQRs = self.ME.getSRQRs(); // get best region vectors 
@@ -369,7 +347,7 @@ OMAFPlayer.prototype.init = function(vidElement, subVidElement, renderElement, s
             self.subVidElement, 
             self.renderElement, 
             self.subRenderElement, 
-            self.cameraElement,
+            self.cameraElement, 
             fps, 
             framesPerSegment, 
             RWPKs, 
@@ -378,13 +356,7 @@ OMAFPlayer.prototype.init = function(vidElement, subVidElement, renderElement, s
         
     this.RE.onInit = function () {
         self.SE.init(self.vidElement, "MASTER");
-        self.fillMyBuffer();
-
-        setInterval(function(){
-            self.checkAvailBuffer(); 
-        }, 100);
-        
-        //self.loadNextSegment(); // load first segment after init
+        self.loadNextSegment(); // load first segment after init
     }
     this.RE.onSwitchRender = function (isSub) {
         if(!isSub){
@@ -397,16 +369,26 @@ OMAFPlayer.prototype.init = function(vidElement, subVidElement, renderElement, s
             self.subRenderElement.style.zIndex = "10";
         }
     }
-    this.RE.OncheckAvailableRenderBuf = function () {
-        //self.ME.getcheckAvailRenderBuf(self.isOnMainVid );
-    }
 
     this.ME.onMediaProcessed = function () {
         // this is where whe know that sourceBuffer has received our stuff
         // requires logic to manage buffers based on segment number
         Log.info("Player", "MediaEngine processed all media segments.");
-        self.retryReqNum = 1;
-        self.fillMyBuffer();
+        loadingDone = false;
+
+        const loadBuffer = () => {
+            while ( !self.isBufferFullyLoaded() && !loadingDone) {
+                    self.fillMyBuffer();
+                    loadingDone = true;
+            }
+            return true;
+        }
+        if(!self.isPlaying) { 
+            loadBuffer(); 
+        }
+        else{ 
+            self.fillMyBuffer();
+        }
     }
     
     this.ME.onSwitchTrack = function(trackID, segNum, difSegNum){
@@ -432,6 +414,10 @@ OMAFPlayer.prototype.init = function(vidElement, subVidElement, renderElement, s
         }else{
             self.RE.subMatchTracktoCube(trackID);
         }
+    }
+
+    this.ME.onFinish = function(){
+        self.isLastBuf = true;
     }
 
     this.ME.onReset = function(){
@@ -462,18 +448,32 @@ OMAFPlayer.prototype.start = function(strMPD){
     this.DL.loadManifest(strMPD);
 }
 
+OMAFPlayer.prototype.isBufferFullyLoaded = function() {
+    self = this;
+    curTime = (self.SE.getCurrentTime());
+    bufferAvailable = ( parseInt(self.ME.currentSegNum)*self.segmentDuration) - curTime; 
+    Log.info("Player"," buffer full last buffered segment  " + self.ME.currentSegNum );
+    Log.info("Player"," segment playbacked  " + ((curTime/self.segmentDuration) ).toFixed(0) );
+ 
+    if( (bufferAvailable + parseInt(self.segmentDuration) ) > (self.bufferLimitTime) )
+    {   Log.info("Player"," Buffer is fully loaded" ); 
+        return true;
+    } else { 
+        Log.info("Player"," Buffer is not fully loaded")        
+        return false;
+    }
+}
  
 OMAFPlayer.prototype.fillMyBuffer = function() {
-    var self = this;
-
     self = this;
     curTime = (self.SE.getCurrentTime());
 
     bufferAvailable = ( parseInt(self.ME.currentSegNum)*self.segmentDuration) - curTime; 
     
-    
     if( (bufferAvailable + parseInt(self.segmentDuration) ) > (self.bufferLimitTime) ){
         decisionOffset  =  (bufferAvailable + parseInt(self.segmentDuration) ) - (self.bufferLimitTime);
+        // self.SE.BufferFull = true;
+        //Log.warn("Player","Next segment can not be accomodated in the buffer. The request will be made in :" + decisionOffset + "ms ");
         setTimeout(function(){
             self.loadNextSegment();
         }, decisionOffset);
@@ -483,8 +483,6 @@ OMAFPlayer.prototype.fillMyBuffer = function() {
             self.loadNextSegment();
         },self.retryTimeMs * self.retryReqNum);
     }
-    
-    
 }
 
 OMAFPlayer.prototype.setBufferLimit = function(bufferLimit) {
@@ -493,7 +491,6 @@ OMAFPlayer.prototype.setBufferLimit = function(bufferLimit) {
 }
 
 OMAFPlayer.prototype.play = function(){
-
     if(this.isPlaying){
         Log.info("Player", "Playback is already running");
         return;
@@ -619,14 +616,13 @@ OMAFPlayer.prototype.loadNextSegment = function(){
             this.tIdCount = 1;
         }
     }
-   
     var mediaURLs = this.MP.getMediaRequestsSimple(this.yaw, this.pitch, this.segmentNr);
-  
+    
     this.preTrackID = this.trackID;
     this.preYaw = this.yaw;
     this.prePitch = this.pitch;
     Log.info("Extractor Track ID : ", this.trackID);
-    if (this.ME.setActiveTrackID(this.trackID)) {
+    if (this.ME.setActiveTrackID(this.trackID, this.segmentNr)) {
         this.DL.loadMediaSegments(mediaURLs, (this.segmentNr++));
     }
 }
@@ -646,59 +642,11 @@ OMAFPlayer.prototype.getMetrics = function(){
     return metrics;
 }
 
-OMAFPlayer.prototype.checkAvailBuffer = function(){
-    
+OMAFPlayer.prototype.checkSubBuffer = function(vidTime){
     var self = this;
-    var curTime = (this.SE.getCurrentTime());
-    var bufferAvailable = (parseInt(this.ME.currentSegNum)*this.segmentDuration) - curTime; 
-    if( (bufferAvailable < this.bufferMinimumTime) && !this.isBusyCheckBuf){
-       
-        this.isBusyCheckBuf = true;
-        if(this.isOnMainVid){
-            this.vidElement.pause();
-        }else{
-            this.subVidElement.pause();
-        }
-    }else if( ( bufferAvailable > parseInt(self.bufferMinimumTime) + parseInt(self.segmentDuration) )&& this.isBusyCheckBuf){
-        self.isBusyCheckBuf = false;
-       
-        if(this.isOnMainVid){
-            self.vidElement.play();
-        }else{
-            self.subVidElement.play();
-        }
-    }
-    this.updateTime();
-}
-
-OMAFPlayer.prototype.updateTime = function () {
-   
-    var curTime = (this.SE.getCurrentTime());
-    var playingTime =  this.msToTime(this.MP.getElapasedTime() + curTime);
-    this.playTimeElement.innerHTML = 'Live Start: ' + this.start_hh + ":" +  this.start_mm + ":" + this.start_ss 
-    + '&nbsp;&nbsp;&nbsp; Playing: ' +  playingTime;
-}
-OMAFPlayer.prototype.msToTime = function (duration) {
-    
-    var seconds = Math.floor((duration / 1000) % 60),
-    minutes = Math.floor((duration / (1000 * 60)) % 60),
-    hours = Math.floor((duration / (1000 * 60 * 60)) % 24);
-  
-    hours = (hours < 10) ? "0" + hours : hours;
-    minutes = (minutes < 10) ? "0" + minutes : minutes;
-    seconds = (seconds < 10) ? "0" + seconds : seconds;
-  
-    return hours + ":" + minutes + ":" + seconds;
-}
-
-OMAFPlayer.prototype.checkMainBuffer = function(vidTime){
-    var self = this;
-
-    this.mainBufReq  = setInterval(function checkMain(){
-       
-        var isChanged = false; 
+    this.subBufReq  = setInterval(function checkSub(){
+        var isChanged = false;
         if(self.ME.isSubBufActive() && self.readySubRender){ 
-            
             self.RE.setIsAniPause(true);
             if(!self.segDifArr.length){
                 self.isAddDif =  false;
@@ -706,7 +654,7 @@ OMAFPlayer.prototype.checkMainBuffer = function(vidTime){
             }else{
                 self.RE.setMaxCurTime(self.segDifArr.shift());
             }
-            
+           
             self.subVidElement.play();
             self.renderElement.style.zIndex = "8";
             self.subRenderElement.style.zIndex = "10";
@@ -720,23 +668,33 @@ OMAFPlayer.prototype.checkMainBuffer = function(vidTime){
             isChanged = true;
             self.readySubRender = false;
         
+        }else if(!self.ME.isSubBufActive() && self.isOnLoop && self.isLastBuf){
+            while(!self.switchInfoQ.empty()){
+                self.switchInfoQ.dequeue();
+            }
+            self.segmentNr = 1;
+            self.isFirstsegment = true;
+            self.bufferOffsetTime = 0; 
+            self.SE.activeVideoElement("MASTER",0);
+            self.RE.setIsAniPause(true);
+            self.ME.removeBuf(false, true);
+            self.ME.reset(true);
+            self.isReset = true;
+            self.isLastBuf = false;
+            self.isOnMainVid = true;
+            isChanged = true;
         }
         if(isChanged || (self.vidElement.currentTime != vidTime)) {
-            clearInterval(self.mainBufReq);
+            clearInterval(self.subBufReq);
         }else{
-            return checkMain;
+            return checkSub;
         }
     }(), 100);
-
-
-    
-    
 }
 
-OMAFPlayer.prototype.checkSubBuffer = function(vidTime){
+OMAFPlayer.prototype.checkMainBuffer = function(vidTime){
     var self = this;
-   
-    this.subBufReq  = setInterval(function checkSub(){
+    this.mainBufReq  = setInterval(function checkMain(){
         var isChanged = false;
         if(self.ME.isMainBufActive() &&  self.readyMainRender){
             self.RE.setIsAniPause(true);
@@ -754,18 +712,35 @@ OMAFPlayer.prototype.checkSubBuffer = function(vidTime){
 
             self.RE.setIsAniPause(false);
             self.SE.activeVideoElement("MASTER",(self.switchInfoQ.front().segNum) -1);
-    
+        
             self.ME.removeBuf(true, false);
             self.isOnMainVid = true;
             self.switchInfoQ.dequeue();
             isChanged = true;
             self.readyMainRender = false;
             
+        }else if(!self.ME.isMainBufActive() && self.isOnLoop && self.isLastBuf){
+            while(!self.switchInfoQ.empty()){
+                self.switchInfoQ.dequeue();
+            }
+            self.segmentNr = 1;
+            self.isFirstsegment = true;
+            self.bufferOffsetTime = 0;
+            self.SE.activeVideoElement("MASTER",0);
+            self.RE.setIsAniPause(true);
+            self.ME.removeBuf(true, true);
+            self.ME.reset(true);
+    
+            self.isReset = true;
+            self.isLastBuf = false;
+            self.isOnMainVid = true;
+            isChanged = true;
+
         }
         if(isChanged || (self.subVidElement.currentTime != vidTime)) {
-            clearInterval(self.subBufReq);
+            clearInterval(self.mainBufReq);
         }else{
-            return checkSub;
+            return checkMain;
         }
     }(), 100);
  }
@@ -790,9 +765,8 @@ OMAFPlayer.prototype.reset = function(){
         clearInterval(self.subBufReq);
         clearInterval(self.pauseReq);
         
-        this.segmentNr      = 0;
+        this.segmentNr      = 1;
         this.tIdCount       = 1;
-        this.retryReqNum    = 1;
         this.segDifArr      = [];
         this.isAddDif       = false;
 
@@ -802,15 +776,18 @@ OMAFPlayer.prototype.reset = function(){
         this.isPlaying = false;
         this.readyInitRender = false; 
         this.initialized = false;
+        this.isFirstsegment = true;
         this.readyMainRender = false;
         this.readySubRender = false;
-        this.isFirstsegment = true;
-        this.mainBufReq = null;
-        this.subBufReq = null;
-        this.pauseReq = null;
     }
 }
 
-
-
-
+OMAFPlayer.prototype.loop = function(element){
+    if(this.isOnLoop){
+        $(element).removeClass('fa-repeat').addClass('fa-long-arrow-right ');
+        this.isOnLoop = false;
+    }else{
+        $(element).removeClass('fa-long-arrow-right').addClass('fa-repeat ');
+        this.isOnLoop = true;
+    }
+}

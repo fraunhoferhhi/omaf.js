@@ -81,7 +81,6 @@ app.controller('OMAFController', function ($scope, manifests){
   $scope.renderEle = document.querySelector('.omaf-player #renderingSurface');
   $scope.subRenderEle = document.querySelector('.omaf-player #subRenderingSurface');
   $scope.cameraControlElement = document.querySelector('.omaf-player #videobox');
-  $scope.playTimeElement = document.getElementById('timeInfoTxt');
 
   // get metrics update interval
   $scope.metricsInterval = 1000;
@@ -160,7 +159,6 @@ app.controller('OMAFController', function ($scope, manifests){
   
   $scope.selectedMPD = { 
     url: 'please select DASH Manifest (MPD) or provide it\'s URL in this field'
-   
   };
 
   manifests.query(function (data) { $scope.availableMPDs = data.mpds; });
@@ -190,8 +188,10 @@ app.controller('OMAFController', function ($scope, manifests){
   $scope.pitch = 0;
   $scope.trackID = 0;
   $scope.segNr = 0;
-   
-  
+
+  $scope.doLoop = function ($event) {
+    $scope.player.loop($event.target);
+  };
 
   $scope.doLoad = function () {
     Log.info("OMAFController", "Load MPD");
@@ -206,7 +206,7 @@ app.controller('OMAFController', function ($scope, manifests){
     }
     $scope.player.reset();
 
-    $scope.player.init($scope.video, $scope.subVideo, $scope.renderEle, $scope.subRenderEle, $scope.cameraControlElement, $scope.playTimeElement, $scope.bufferLimit);
+    $scope.player.init($scope.video, $scope.subVideo, $scope.renderEle, $scope.subRenderEle, $scope.cameraControlElement, $scope.bufferLimit);
     $scope.player.start($scope.selectedMPD.url);
 
     $scope.loadTimestamp = Date.now();
@@ -217,6 +217,21 @@ app.controller('OMAFController', function ($scope, manifests){
   $scope.doFullscreen = function () {
     Log.info("OMAFController", "change Full screen");
     $scope.player.changeFullScreen();
+  };
+
+  $scope.doPlayPause = function () {
+    var span = document.getElementById("iconPlayPause");
+        if (span !== null && $scope.player.initialized) {
+            if($scope.player.isPlaying){
+                span.classList.remove('fa-pause');
+                span.classList.add('fa-play');
+                $scope.player.pause();
+            } else{
+                span.classList.remove('fa-play');
+                span.classList.add('fa-pause');
+                $scope.player.play();
+            }
+        }
   };
 
   function updateMetrics() {
