@@ -158,6 +158,8 @@ video {
     padding: 9px 10px;
     cursor: pointer;
 }
+#iconPlayPause, 
+#iconRepeat,
 #timeInfoTxt,
 #iconFullscreen{
     font-size: 20px;
