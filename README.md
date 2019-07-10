@@ -128,7 +128,7 @@ The test sequence is available for download at our [datacloud server](https://da
 It contains a `dash` folder with a DASH manifest file and media segments available in 2 different resolutions (each encoded with 3 different quality levels) which can be used together with the JavaScript player.
 In addition, it includes a single `Garage_qp27.mp4` file with 72 video tracks (24 high resolution tiles, 24 low resolution tiles and 24 extractor tracks) which can be used for local playback testing using stand-alone tools such as [hevc_extractors app](https://github.com/podborski/isobmff/tree/extractorFix).
 
-In case of any problems with the datacloud link please contact: dimitri.podborski@hhi.fraunhofer.de
+In case of any problems with the datacloud link please contact `dimitri.podborski[at]hhi.fraunhofer.de`
 
 ## 4. Usage Guidelines
 

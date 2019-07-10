@@ -120,6 +120,7 @@ Fetcher.prototype.loadInitSegments = function(urlsWithASIDs){
   var resNum = 0;
   var retVal = [];
   var asIDs = [];
+  var resFail = true;
 
   Log.info("DL", "Fetch " + numOfRequests + " init file(s)");
   const multiFetch = url => fetch(this.baseURL + url)
@@ -128,7 +129,12 @@ Fetcher.prototype.loadInitSegments = function(urlsWithASIDs){
       if (res.ok) {
         return res.arrayBuffer();
       } else {
-        throw "Can't download: " + res.url;
+        if(resFail){
+          Log.debug("DL", "response Fail: " + res.url);
+          this.onInitRequestFail();
+          resFail = false;
+        }
+        return null;
       }
     })
     .then(data => {
@@ -173,8 +179,10 @@ Fetcher.prototype.loadMediaSegments = function (urls, segNum) {
   }
   //Log.warn("DL",urls);
   var numOfRequests = urls.length;
-  var resNum = 0;
+  var resSNum = 0;
+  var resFNum = 0;
   var retVal = [];
+  var resFail = true;
 
   Log.info("DL", "Fetch " + numOfRequests + " media file(s)");
 
@@ -184,19 +192,33 @@ Fetcher.prototype.loadMediaSegments = function (urls, segNum) {
       if (res.ok) {
         return res.arrayBuffer();
       } else {
-        throw "Can't download: " + res.url;
+        if(resFail){
+          Log.debug("DL", "response Fail: " + res.url);
+          this.onMediaRequestFail(segNum);
+          resFail = false;
+        }
+        return null;
       }
     })
     .then(data => {
       
-      resNum++;
-      retVal.push(data);
-      if (resNum == numOfRequests) {
-        this.onMediaLoaded(retVal, segNum);
+      if(data){
+        resSNum++;
+        retVal.push(data);
+        if (resSNum == numOfRequests) {
+          this.onMediaLoaded(retVal, segNum);
+        }
+      }else{
+        resFNum++;
+        if ((resSNum+resFNum) == numOfRequests) {
+          delete retVal;
+          retVal = null;
+        }
+        return;
       }
     })
     .catch(err => {
-      Log.error("DL", "Something is wrong with media segments." + url);
+      //Log.error("DL", "Something is wrong with media segments." + url);
       //$("#modalMessage").html("Not available url <br> url: " + url);
       //$("#warningPopup").modal();
       throw err;

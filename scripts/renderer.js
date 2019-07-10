@@ -98,6 +98,7 @@ function Renderer() {
   this.resizeReq      = null;
   this.maxCurTime     = 0;
   this.setIsSwitch      = false;
+  this.setIsActiveSubVid  = false;
 
   this.renderDebug = false;     // if set to true, render some additional debug info on top
   this.debugScene = null;
@@ -105,6 +106,7 @@ function Renderer() {
 
   this.onInit   = null;
   this.onSwitchRender = null;
+  this.OncheckAvailableRenderBuf  = null;
 }
 
 Renderer.prototype.getFragmentShader = function(){
@@ -196,18 +198,14 @@ Renderer.prototype.init = function (projection_type, video, subVideo, renderEle,
     Log.warn("Renderer", "framePerSegment is undefined.");
   }
   if(!WEBGL.isWebGLAvailable()){
-    Log.error("Renderer", "This device or browser does not support WebGL.");
-    $("#modalMessage").html("This device or browser does not support WebGL");
-    $("#warningPopup").modal();
+    ErrorPopUp("This device or browser does not support WebGL");
     return;
   }
   if(!(window.requestAnimationFrame || window.webkitRequestAnimationFrame || window.mozRequestAnimationFrame)){
-    Log.error("Renderer", "Don't support requestAnimationFrame.");
-    $("#modalMessage").html("This device or browser does not support requestAnimationFrame method" );
-    $("#warningPopup").modal();
+    ErrorPopUp("This device or browser does not support requestAnimationFrame method" );
     return;
   }
- 
+
 
   var self = this;
   this.videoElement = video;
@@ -230,7 +228,7 @@ Renderer.prototype.init = function (projection_type, video, subVideo, renderEle,
   this.subVideoTexture = new THREE.VideoTexture(this.subVideoElement);
   this.subVideoTexture.minFilter = THREE.LinearFilter;
   this.subVideoTexture.magFilter = THREE.LinearFilter;
-
+;
 
   var canvas = renderEle;
   this.webGLRenderer = new THREE.WebGLRenderer({"canvas": canvas});
@@ -294,6 +292,9 @@ Renderer.prototype.init = function (projection_type, video, subVideo, renderEle,
     this.subGeometry = new THREE.BoxGeometry( 10, 10, 10 );
     this.initCubeFace();
 
+
+    //this.material = new THREE.MeshBasicMaterial( { map : self.videoTexture, side: THREE.DoubleSide } );
+    
     this.material = new THREE.ShaderMaterial( {
 
       uniforms: {
@@ -496,44 +497,13 @@ Renderer.prototype.initCubeFace = function () {
 }
 
 
-
-Renderer.prototype.textureFromFloats = function (gl,float32Array) 
-{
-  if(!gl.getExtension("OES_texture_float")){
-    Log.error("Renderer", "Don't support OES_texture_float");
-    $("#modalMessage").html("Don't support OES_texture_float");
-    $("#warningPopup").modal();
-  }
-  
-  var oldActive = gl.getParameter(gl.ACTIVE_TEXTURE);
-  gl.activeTexture(gl.TEXTURE15); // working register 31, thanks.
-
-  var texture = gl.createTexture();
-  gl.bindTexture(gl.TEXTURE_2D, texture);
-
-  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 
-    2, 2, 0, 
-    gl.RGBA, gl.FLOAT, float32Array);
-
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-  gl.bindTexture(gl.TEXTURE_2D, null);
-
-  gl.activeTexture(oldActive);
-  
-  return texture;
-}
-
-
 /*
 - save information of rwpk (proj and unpacked resolution) for shader
 */
 Renderer.prototype.initRWPKInfo = function () {
 
   if (!this.allTracksRwpk[Object.keys(this.allTracksRwpk)[0]]) {
-    Log.error("Renderer", "RWPK is undefined.");
-    $("#modalMessage").html("Region wise packing metadata is undefined");
-    $("#warningPopup").modal();
+    ErrorPopUp("Region wise packing metadata is undefined");
     return;
   }
   var regionsSize = this.allTracksRwpk[Object.keys(this.allTracksRwpk)[0]].regions.length;
@@ -557,7 +527,7 @@ Renderer.prototype.initRWPKInfo = function () {
   var proj_picture_height = this.allTracksRwpk[Object.keys(this.allTracksRwpk)[0]].proj_picture_height;
   var packed_picture_width = this.allTracksRwpk[Object.keys(this.allTracksRwpk)[0]].packed_picture_width;
   var packed_picture_height = this.allTracksRwpk[Object.keys(this.allTracksRwpk)[0]].packed_picture_height;
-
+  
   this.material.uniforms.uniMniHeight.value = 1 / regionsSize;
   this.subMaterial.uniforms.uniMniHeight.value = 1 / regionsSize;
   
@@ -611,16 +581,18 @@ Renderer.prototype.initRWPKInfo = function () {
     }
      
   }
+  
   this.material.uniforms.uniProjTexture.value = this.projArrtexture[0];
   this.material.uniforms.uniPackTexture.value = this.packArrtexture[0];
   this.material.uniforms.uniRotateTexture.value = this.rotateArrtexture[0];
   this.subMaterial.uniforms.uniProjTexture.value = this.projArrtexture[1];
   this.subMaterial.uniforms.uniPackTexture.value = this.packArrtexture[1];
   this.subMaterial.uniforms.uniRotateTexture.value = this.rotateArrtexture[1];
+  
 }
 
 Renderer.prototype.subMatchTracktoCube = function (track) {
-  
+ 
   this.projArrtextureData[1].set(this.arrProjRegions[track]);
   this.packArrtextureData[1].set(this.arrPackedRegions[track]);
   this.rotateArrtextureData[1].set(this.arrRotates[track]);
@@ -630,7 +602,7 @@ Renderer.prototype.subMatchTracktoCube = function (track) {
 }
 
 Renderer.prototype.matchTracktoCube = function (track) {
-  
+ 
   this.projArrtextureData[0].set(this.arrProjRegions[track]);
   this.packArrtextureData[0].set(this.arrPackedRegions[track]);
   this.rotateArrtextureData[0].set(this.arrRotates[track]);
@@ -646,6 +618,7 @@ Renderer.prototype.readyToChangeTrack = function (isSub) {
 
 Renderer.prototype.animate = function () {
   var self = this;
+
   if(this.renderDebug){ 
     this.stats.begin();
     this.renderVideo();
@@ -653,12 +626,17 @@ Renderer.prototype.animate = function () {
   } else{
     this.renderVideo();
   }
+  
   this.aniReq = window.webkitRequestAnimationFrame(function () { self.animate(); });
+  
+  
 }
+
+
 
 Renderer.prototype.mainRenderVideo = function () {
   this.webGLRenderer.clear();
-  this.webGLRenderer.render(this.subScene, this.camera);
+  this.webGLRenderer.render(this.scene, this.camera);
 }
 
 
@@ -672,6 +650,8 @@ Renderer.prototype.renderVideo = function () {
   if(this.isAniPause){
     return;
   }
+  
+  //this.OncheckAvailableRenderBuf();
   this.controls.update();
   if(this.setIsSwitch){
     if(!this.isSub){
@@ -680,16 +660,13 @@ Renderer.prototype.renderVideo = function () {
       }
     } else{
       if(this.subVideoElement.currentTime > this.maxCurTime){
-        //Log.warn("Renderer", "maxCurTime: "+ this.maxCurTime);
-        //Log.warn("Renderer", "sub: "+ this.subVideoElement.currentTime);
         this.onSwitchRender(false);
       }
     }
   }
-  
   this.webGLRenderer.clear();
   this.webGLRenderer.render(this.scene, this.camera);
-
+  
   this.subWebGLRenderer.clear();
   this.subWebGLRenderer.render(this.subScene, this.camera);
   
@@ -718,6 +695,7 @@ Renderer.prototype.getOMAFPosition = function() {
 }
 
 Renderer.prototype.resize = function (element, callback) {
+ 
   var height = $(element).height();
   var width  = $(element).width();
   
@@ -741,6 +719,15 @@ Renderer.prototype.setMaxCurTime = function (time) {
 Renderer.prototype.setSwitch = function (isset) {
   this.setIsSwitch = isset;
 }
+Renderer.prototype.setActiveVideoEle = function (isSub) {
+  this.setIsActiveSubVid = isSub;
+}
+
+
+Renderer.prototype.reDifineVideo = function () {
+  this.material.needsUpdate = true;
+}
+
 
 Renderer.prototype.reset = function () {
   if(this.initialized){
@@ -767,6 +754,7 @@ Renderer.prototype.reset = function () {
     delete this.initialized;
     delete this.isSub;
     delete this.isAniPause;
+    delete this.setIsActiveSubVid;
     delete this.maxCurTime;
     delete this.setIsSwitch;
     delete this.aniReq;

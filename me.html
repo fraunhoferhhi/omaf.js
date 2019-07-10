@@ -6,6 +6,7 @@
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title>ME test</title>
 
+    
     <link rel="stylesheet" href="lib/bootstrap/css/bootstrap.min.css">
     <script src="lib/jquery/jquery-3.2.1.slim.min.js"></script>
     <script src="lib/bootstrap/js/popper.min.js"></script>
@@ -49,6 +50,26 @@
         </div>
     </div>
 
+    <!-- Modal -->
+    <div class="modal fade" id="warningPopup" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                <h5 class="modal-title" id="exampleModalLongTitle">Error</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+                </div>
+                <div class="modal-body">
+                    <p id=modalMessage></p>
+                </div>
+                <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         // we don't care and just put all we need for testing into window.omaf ;)
         window.omaf = {};
@@ -76,7 +97,7 @@
             self.DL.onInitLoaded = function (data) { 
                 self.ME.init(self.video1, self.video2, self.MP.getMimeType(), self.lastSegNum, data); 
             }
-            self.DL.onMediaLoaded = function (data, segNum) { self.ME.processMedia(data, segNum); }
+            self.DL.onMediaLoaded = function (data, segNum) { self.ME.processMedia(data); }
             self.MP.onInit = function () {
                 let initURLs = self.MP.getVPinitSegURLs();
                 self.lastSegNum = parseInt(self.MP.getLastSegmentNr());
@@ -135,7 +156,7 @@
 
                 Log.info("main", "selected asID / trackID = " + asID + " / " + self.trackID);
 
-                self.ME.setActiveTrackID(self.trackID, self.segmentNr)
+                self.ME.setActiveTrackID(self.trackID);
 
                 let mediaURLs = self.MP.getMediaRequestsSimple(0, 0, self.segmentNr);
 

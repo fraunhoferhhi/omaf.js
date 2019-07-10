@@ -142,7 +142,7 @@ MediaEngine.prototype.getTrackReferences = function(trackID){
 }
 
 MediaEngine.prototype.setActiveTrackID = function(trackID, segNum){
-    if(segNum > this.lastSegNum){
+    if(segNum > this.lastSegNum && this.lastSegNum > 0){
         return false;
     }
     if(this.currentTrackID===trackID){
@@ -466,13 +466,14 @@ MediaEngine.prototype.getSRQRs = function(){
 }
 
 MediaEngine.prototype.processMedia = function (arrayOfMoofMdats, segNum){
-    this.currentSegNum = segNum;
+    //this.currentSegNum = segNum;
     var self = this;
     this.isBusy = true;
+    this.currentSegNum++;
    // Log.warn("ME","processMedia segnum : " + segNum +  " the track ID is : "+ this.currentTrackID);
 
 
-    if(this.currentSegNum == this.lastSegNum){
+    if(this.currentSegNum == this.lastSegNum && this.lastSegNum > 0){
         this.isLastBuf = true;
     }
 
@@ -524,9 +525,9 @@ MediaEngine.prototype.processMedia = function (arrayOfMoofMdats, segNum){
     };
     this.manageBufferQ.enqueue(bufObj);
 
-    if(this.currentSegNum < this.lastSegNum){
+   
         this.onMediaProcessed();
-    }
+    
 }
 
 MediaEngine.prototype.packageBitstream = function(bitstream){
@@ -844,7 +845,7 @@ MediaEngine.prototype.reset = function(isLoop){
         this.currentTrackID = 0;
         this.isSubBuffer    = false;
         this.isLastBuf      = false;
-        this.currentSegNum  = null;     
+        this.currentSegNum  = 0;     
         this.mainBufSegNum  = 0; 
         this.subBufSegNum   = 0;
         this.nextDecodeTime = 0; 
