@@ -15,13 +15,22 @@ Further information about the individual modules can be found below.
 This implementation was also submitted to the demo track of ACM Multimedia Systems Conference [ACM MMSys'19](http://www.mmsys2019.org/participation/demo-track/) and has been accepted to
 appear in the conference. The submitted version of the paper (not camera ready yet) can be downloaded [here](https://arxiv.org/pdf/1903.02971.pdf). Please cite our paper if you use something from this repository:
 
-    @misc{podborski2019html5,
-        title={HTML5 MSE Playback of MPEG 360 VR Tiled Streaming},
-        author={Dimitri Podborski and Jangwoo Son and Gurdeep Singh Bhullar and Cornelius Hellge and Thomas Schierl},
-        year={2019},
-        eprint={1903.02971},
-        archivePrefix={arXiv},
-        primaryClass={cs.MM}
+    @inproceedings{Podborski:2019:HMP:3304109.3323835,
+        author = {Podborski, Dimitri and Son, Jangwoo and Bhullar, Gurdeep Singh and Skupin, Robert and Sanchez, Yago and Hellge, Cornelius and Schierl, Thomas},
+        title = {HTML5 MSE Playback of MPEG 360 VR Tiled Streaming: JavaScript Implementation of MPEG-OMAF Viewport-dependent Video Profile with HEVC Tiles},
+        booktitle = {Proceedings of the 10th ACM Multimedia Systems Conference},
+        series = {MMSys '19},
+        year = {2019},
+        isbn = {978-1-4503-6297-9},
+        location = {Amherst, Massachusetts},
+        pages = {324--327},
+        numpages = {4},
+        url = {http://doi.acm.org/10.1145/3304109.3323835},
+        doi = {10.1145/3304109.3323835},
+        acmid = {3323835},
+        publisher = {ACM},
+        address = {New York, NY, USA},
+        keywords = {360 video, HEVC, JavaScript, MSE, OMAF, VR, streaming, tiles},
     }
 
 To see the JavaScript Player in action you can watch our MMSys demo video here:
