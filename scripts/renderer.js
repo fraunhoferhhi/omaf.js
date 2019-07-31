@@ -99,6 +99,8 @@ function Renderer() {
   this.maxCurTime     = 0;
   this.setIsSwitch      = false;
   this.setIsActiveSubVid  = false;
+  this.isCheckHZ       = false;
+  this.lastPerformance  = 0;
 
   this.renderDebug = false;     // if set to true, render some additional debug info on top
   this.debugScene = null;
@@ -106,7 +108,7 @@ function Renderer() {
 
   this.onInit   = null;
   this.onSwitchRender = null;
-  this.OncheckAvailableRenderBuf  = null;
+  this.onChangeResolution  = null;
 }
 
 Renderer.prototype.getFragmentShader = function(){
@@ -369,7 +371,7 @@ Renderer.prototype.init = function (projection_type, video, subVideo, renderEle,
     this.stats.domElement.style.bottom	= '0px';
   }
 
-
+  
   this.controls = new THREE.OrbitControls(this.camera, cameraElement);
   this.controls.enableZoom = false;
   this.controls.enablePan = false;
@@ -619,14 +621,10 @@ Renderer.prototype.readyToChangeTrack = function (isSub) {
 Renderer.prototype.animate = function () {
   var self = this;
 
-  if(this.renderDebug){ 
-    this.stats.begin();
-    this.renderVideo();
-    this.stats.end(); 
-  } else{
-    this.renderVideo();
-  }
-  
+  this.stats.begin();
+  this.renderVideo();
+  this.stats.end();
+
   this.aniReq = window.webkitRequestAnimationFrame(function () { self.animate(); });
   
   
@@ -651,7 +649,7 @@ Renderer.prototype.renderVideo = function () {
     return;
   }
   
-  //this.OncheckAvailableRenderBuf();
+  
   this.controls.update();
   if(this.setIsSwitch){
     if(!this.isSub){
@@ -695,7 +693,7 @@ Renderer.prototype.getOMAFPosition = function() {
 }
 
 Renderer.prototype.resize = function (element, callback) {
- 
+  var self = this;
   var height = $(element).height();
   var width  = $(element).width();
   
@@ -703,6 +701,7 @@ Renderer.prototype.resize = function (element, callback) {
       if ($(element).height() != height || $(element).width() != width) {
         height = $(element).height();
         width  = $(element).width();
+        self.onChangeResolution(width, height);
         callback();
       }
   }, 300);
@@ -726,6 +725,43 @@ Renderer.prototype.setActiveVideoEle = function (isSub) {
 
 Renderer.prototype.reDifineVideo = function () {
   this.material.needsUpdate = true;
+}
+
+Renderer.prototype.getFovH = function () {
+  return 2 * Math.atan( Math.tan( this.camera.fov * Math.PI / 180 / 2 ) * this.camera.aspect ) * 180 / Math.PI;
+}
+
+Renderer.prototype.getFovV = function () {
+  return this.camera.fov;
+}
+
+Renderer.prototype.getHZ = function () {
+  return this.stats.getFPS();
+}
+
+Renderer.prototype.getCentrePosOn2DCube = function (cubeVec3,canvas) {
+   // model to world
+  var vector = new THREE.Vector3( cubeVec3.x, cubeVec3.y , cubeVec3.z );
+  //var vector = new THREE.Vector3();
+  //this.mesh.updateMatrixWorld();
+  //var modelMat = this.mesh.matrixWorld;
+  //vector.applyMatrix4(modelMat);
+  //vector.setFromMatrixPosition(this.mesh.matrixWorld);
+  
+
+  // world to view and view to NDC
+  vector.project(this.camera);
+
+  var widthHalf = 0.5*this.webGLRenderer.context.canvas.width;
+  // NDC to pixel
+ // vector.x = Math.round( ( vector.x + 1 ) * $(canvas).width() / 2 );
+  //vector.x = ( vector.x * widthHalf ) + widthHalf;
+  //vector.y = Math.round( ( - vector.y + 1 ) * window.innerHeight / 2 );
+
+  vector.x = Math.round( (   vector.x + 1 ) * canvas.width  / 2 );
+  vector.y = Math.round( ( - vector.y + 1 ) * canvas.height / 2 );
+  vector.z = 0;
+ // console.log(vector.x + " // " + vector.y);
 }
 
 

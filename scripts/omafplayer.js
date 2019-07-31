@@ -80,6 +80,7 @@ function OMAFPlayer () {
     this.ME = null; // Media Engine
     this.DL = null; // DownLoader
     this.RE = null; // REnderer
+    this.MT = null;
 
     this.segmentNr = 1;
     this.yaw       = 0;
@@ -92,10 +93,12 @@ function OMAFPlayer () {
     this.retryTimeMs    = 100;
     this.retryReqNum    = 1;
     this.elapasedTime   = 0;
+    this.displayHZ      = 0;
     this.isAddDif       = false;
     this.mainBufReq     = null;
     this.subBufReq      = null;
     this.pauseReq       = null;
+    this.metricsReq     = null;
 
     this.vidElement = null;
     this.subVidElement  = null;
@@ -146,6 +149,7 @@ OMAFPlayer.prototype.init = function(vidElement, subVidElement, renderElement, s
     this.DL = new Fetcher();
     this.RE = new Renderer();
     this.SE = new scheduler();
+    this.MT = new Metrics();
 
     Log.info("Player", "init OMAF Player");
     
@@ -246,6 +250,7 @@ OMAFPlayer.prototype.init = function(vidElement, subVidElement, renderElement, s
             clearInterval(self.mainBufReq);
             clearInterval(self.subBufReq);
             clearInterval(self.pauseReq);
+            clearInterval(self.metricsReq);
             self.vidElement.play();
             self.RE.mainRenderVideo();
             self.renderElement.style.zIndex = "10";
@@ -268,7 +273,6 @@ OMAFPlayer.prototype.init = function(vidElement, subVidElement, renderElement, s
         if(!self.readyInitRender){
             self.SE.activeVideoElement("MASTER",0);
             self.RE.animate();
-    
             self.ME.removeBuf(true, false);
             self.readyInitRender = true;
             self.isOnMainVid = true;
@@ -356,7 +360,12 @@ OMAFPlayer.prototype.init = function(vidElement, subVidElement, renderElement, s
         
     this.RE.onInit = function () {
         self.SE.init(self.vidElement, "MASTER");
+        var resolution = $(self.renderElement).width() + "x" + $(self.renderElement).height();
+        self.MT.init(this.getFovH(),this.getFovH(),resolution);
+        self.checkMetrics(); 
+        
         self.loadNextSegment(); // load first segment after init
+        
     }
     this.RE.onSwitchRender = function (isSub) {
         if(!isSub){
@@ -365,9 +374,13 @@ OMAFPlayer.prototype.init = function(vidElement, subVidElement, renderElement, s
             self.subRenderElement.style.zIndex = "8";
         }else{
             self.subVidElement.play();
-            self.renderElement.style.zIndex = "8";
+            self.renderElement.style.zIndex = "8";  
             self.subRenderElement.style.zIndex = "10";
         }
+    }
+    this.RE.onChangeResolution = function (width, height) {
+        var resolution = width + "x" + height;
+        self.MT.updateResolution(resolution);
     }
 
     this.ME.onMediaProcessed = function () {
@@ -642,6 +655,87 @@ OMAFPlayer.prototype.getMetrics = function(){
     return metrics;
 }
 
+OMAFPlayer.prototype.checkMetrics = function(){
+    var self = this;
+    self.metricsReq = setInterval(function (){
+        var hz = Math.round(self.RE.getHZ());
+        if(self.displayHZ === 0 || self.displayHZ !== hz){
+            self.displayHZ = hz;
+            self.MT.updateRefreshRate(self.displayHZ);
+            //console.log(self.displayHZ);
+        }
+        var pos = self.RE.getOMAFPosition();
+        var yaw = pos.phi; 
+        var pitch = pos.theta;
+        var posVecSphere = new THREE.Vector3( Math.cos(pitch)*Math.cos(yaw), 
+                                    Math.cos(pitch)*Math.sin(yaw), 
+                                    Math.sin(pitch) );
+        /*
+        cAzimuthTop = yaw + (self.RE.getFovH() / 2);
+        cAzimuthBot = yaw - (self.RE.getFovH() / 2);
+        cElevationTop = pitch + (self.RE.getFovV() / 2);
+        cElevationBot = pitch - (self.RE.getFovV() / 2);
+        */
+        var posVecCube = self.sphereCoordToCube(posVecSphere);
+
+    },200);
+   
+}
+
+OMAFPlayer.prototype.sphereCoordToCube = function (sphereVec3) {
+    var posVecSphereAbs = new THREE.Vector3(Math.abs(sphereVec3.x), Math.abs(sphereVec3.y), Math.abs(sphereVec3.z));
+    var isCubeFaceY =  Boolean(posVecSphereAbs.y >= posVecSphereAbs.x && posVecSphereAbs.y >= posVecSphereAbs.z);
+    var isCubeFaceX =  Boolean(posVecSphereAbs.x >= posVecSphereAbs.z);
+    return this.getCubeCoord(sphereVec3, isCubeFaceY, isCubeFaceX);
+}
+
+OMAFPlayer.prototype.getCubeCoord = function (sphere ,isCubeFaceY, isCubeFaceX) {
+    var inverseSqrt2 = 0.70710676908493042;
+    var sphereX, sphereY , sphereZ;
+    
+    if(isCubeFaceY){
+        sphereX = sphere.x;
+        sphereY = sphere.z;
+        sphereZ = sphere.y;
+    }else{
+        if(isCubeFaceX){
+            sphereX = sphere.y;
+            sphereY = sphere.z;
+            sphereZ = sphere.x;
+        }else{
+            sphereX = sphere.x;
+            sphereY = sphere.y;
+            sphereZ = sphere.z;
+        }
+    }
+    var xx2 = sphereX * sphereX * 2;
+    var yy2 = sphereY * sphereY * 2;
+
+    var v = new THREE.Vector2(xx2 - yy2, yy2 - xx2);
+
+    var ii = v.y - 3;
+    ii *= ii;
+
+    var isqrt = -Math.sqrt(ii - 12 * xx2) + 3;
+    v.x = Math.sqrt(v.x + isqrt);
+    v.y = Math.sqrt(v.y + isqrt);
+
+    v.x *= inverseSqrt2;
+    v.y *= inverseSqrt2;
+   
+    var resultVec3;
+    if(isCubeFaceY){
+        resultVec3 = new THREE.Vector3(Math.sign(sphereX) * v.x, Math.sign(sphereZ) * 1, Math.sign(sphereY) * v.y);
+    }else{
+        if(isCubeFaceX){
+            resultVec3 = new THREE.Vector3(Math.sign(sphereZ) * 1, Math.sign(sphereX) * v.x, Math.sign(sphereY) * v.y);
+        }else{
+            resultVec3 = new THREE.Vector3(Math.sign(sphereX) * v.x, Math.sign(sphereY) * v.y,  Math.sign(sphereZ) * 1);
+        }
+    }
+    return resultVec3;
+}
+
 OMAFPlayer.prototype.checkSubBuffer = function(vidTime){
     var self = this;
     this.subBufReq  = setInterval(function checkSub(){
@@ -755,6 +849,7 @@ OMAFPlayer.prototype.reset = function(){
         delete this.ME;
         delete this.MP;
         delete this.RE;
+        delete this.MT;
     
         delete this.videoController;
         delete this.mouseMoveHandler;
@@ -764,6 +859,7 @@ OMAFPlayer.prototype.reset = function(){
         clearInterval(self.mainBufReq);
         clearInterval(self.subBufReq);
         clearInterval(self.pauseReq);
+        clearInterval(self.metricsReq);
         
         this.segmentNr      = 1;
         this.tIdCount       = 1;

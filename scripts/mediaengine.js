@@ -508,7 +508,7 @@ MediaEngine.prototype.processMedia = function (arrayOfMoofMdats, segNum){
     this.manageBufferQ.enqueue(bufObj);
 
    
-        this.onMediaProcessed();
+    this.onMediaProcessed();
     
 }
 
