@@ -69,6 +69,7 @@ function Metrics() {
   this.RenderedViewportList = [];
   this.cqViewportSwitchingLatencyList = [];
   this.viewpointSwitchingLatencyList = [];
+  this.oncheckRecentRenderedViewport  = null;
 }
 
 function ViewportDataType(vpID, cenAz, cenEl, cenTi, azRange, elRange) {
@@ -138,12 +139,14 @@ Metrics.prototype.updateRefreshRate = function (rate) {
   }
   this.displayInfoSet.displayRefreshRate = rate;
 }
-
 Metrics.prototype.updateRenderedViewport = function (time, duration, viewport) {
-  
-  if (!time || !duration || !viewport){
+  if (!duration || !viewport){
     Log.warn("Metrics", "No RenderedViewport value.");
     return;
   }
   this.RenderedViewportList.push(new RenderedViewport(time, duration, viewport));
+}
+
+Metrics.prototype.getRecentRenderedViewport = function () {
+  this.onCheckRecentRenderedViewport(this.RenderedViewportList);
 }

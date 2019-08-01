@@ -427,25 +427,29 @@ OMAFPlayer.prototype.init = function(vidElement, subVidElement, renderElement, s
         }else{
             self.segDifArr.push(((difSegNum * self.segmentDuration) / 1000));
         }
-        var mediaTime = self.milliToTime(self.SE.getCurrentTime());
+        var currntMediaTime = self.SE.getCurrentTime();
         var mediaViewport = null;
+        var startTime = 0;
         if(self.maxDifSegNum === 0){ // first track change
-           
-            if(difSegNum * self.segmentDuration < self.SE.getCurrentTime() - (self.MP.getFirstSegmentNr() * self.segmentDuration)){
-                self.longestMediaTimeMS = self.SE.getCurrentTime() - (self.MP.getFirstSegmentNr() * self.segmentDuration);
+            if(self.MP.getFirstSegmentNr() > 1){
+                startTime = currntMediaTime - difSegNum * self.segmentDuration;
+            }
+            if(difSegNum * self.segmentDuration < currntMediaTime - (self.MP.getFirstSegmentNr() * self.segmentDuration)){
+                self.longestMediaTimeMS = currntMediaTime - (self.MP.getFirstSegmentNr() * self.segmentDuration);
                 mediaViewport = self.MP.getMediaVP(self.firstTrackID);
-                self.MT.updateRenderedViewport(mediaTime, self.longestMediaTimeMS, mediaViewport);
+                self.MT.updateRenderedViewport(startTime, self.longestMediaTimeMS, mediaViewport);
             }else{
                 self.longestMediaTimeMS = difSegNum * self.segmentDuration;
                 mediaViewport = self.MP.getMediaVP(trackID);
-                self.MT.updateRenderedViewport(mediaTime, self.longestMediaTimeMS, mediaViewport);
+                self.MT.updateRenderedViewport(startTime, self.longestMediaTimeMS, mediaViewport);
             }
             self.maxDifSegNum = difSegNum;
         }else{
             if(self.maxDifSegNum < difSegNum){
+                startTime = currntMediaTime - difSegNum * self.segmentDuration;
                 self.longestMediaTimeMS = difSegNum * self.segmentDuration;
                 mediaViewport = self.MP.getMediaVP(trackID);
-                self.MT.updateRenderedViewport(mediaTime, self.longestMediaTimeMS, mediaViewport);
+                self.MT.updateRenderedViewport(startTime, self.longestMediaTimeMS, mediaViewport);
                 self.maxDifSegNum = difSegNum;
             }
         }
@@ -466,6 +470,25 @@ OMAFPlayer.prototype.init = function(vidElement, subVidElement, renderElement, s
 
     this.ME.onReset = function(){
         self.loadNextSegment();
+    }
+
+    this.MT.onCheckRecentRenderedViewport = function(renderedViewportList){
+        var currntMediaTime = self.SE.getCurrentTime();
+        var mediaViewport = null;
+        var startTime = 0;
+        if(self.MP.getFirstSegmentNr() > 1){
+            startTime = currntMediaTime - self.ME.currentSegNum * self.segmentDuration; // currnet SegNum of ME starts from 0.
+        }
+        if(!renderedViewportList){
+            self.longestMediaTimeMS = self.SE.getCurrentTime() - (self.MP.getFirstSegmentNr() * self.segmentDuration);
+            mediaViewport = self.MP.getMediaVP(self.firstTrackID);
+            self.MT.updateRenderedViewport(startTime, self.longestMediaTimeMS, mediaViewport);
+        }else{
+            var lastVP = renderedViewportList[renderedViewportList.length - 1];
+            var elapsedTime = self.SE.getCurrentTime()- lastVP.startTime;
+            self.longestMediaTimeMS = elapsedTime;
+            self.MT.updateRenderedViewport(lastVP.startTime, self.longestMediaTimeMS, lastVP.viewport);
+        }
     }
 
     if (document.addEventListener)
@@ -712,18 +735,6 @@ OMAFPlayer.prototype.checkMetrics = function(){
 
     },200);
    
-}
-OMAFPlayer.prototype.milliToTime = function (millisec) {
-    var milliseconds = (millisec % 1000),
-    seconds = Math.floor((millisec / 1000) % 60),
-    minutes = Math.floor((millisec / (1000 * 60)) % 60),
-    hours = Math.floor((millisec / (1000 * 60 * 60)) % 24);
-
-    hours = (hours < 10) ? "0" + hours : hours;
-    minutes = (minutes < 10) ? "0" + minutes : minutes;
-    seconds = (seconds < 10) ? "0" + seconds : seconds;
-
-    return hours + ":" + minutes + ":" + seconds + "." + milliseconds;
 }
 
 OMAFPlayer.prototype.sphereCoordToCube = function (sphereVec3) {
