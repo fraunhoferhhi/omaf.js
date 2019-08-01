@@ -739,30 +739,6 @@ Renderer.prototype.getHZ = function () {
   return this.stats.getFPS();
 }
 
-Renderer.prototype.getCentrePosOn2DCube = function (cubeVec3,canvas) {
-   // model to world
-  var vector = new THREE.Vector3( cubeVec3.x, cubeVec3.y , cubeVec3.z );
-  //var vector = new THREE.Vector3();
-  //this.mesh.updateMatrixWorld();
-  //var modelMat = this.mesh.matrixWorld;
-  //vector.applyMatrix4(modelMat);
-  //vector.setFromMatrixPosition(this.mesh.matrixWorld);
-  
-
-  // world to view and view to NDC
-  vector.project(this.camera);
-
-  var widthHalf = 0.5*this.webGLRenderer.context.canvas.width;
-  // NDC to pixel
- // vector.x = Math.round( ( vector.x + 1 ) * $(canvas).width() / 2 );
-  //vector.x = ( vector.x * widthHalf ) + widthHalf;
-  //vector.y = Math.round( ( - vector.y + 1 ) * window.innerHeight / 2 );
-
-  vector.x = Math.round( (   vector.x + 1 ) * canvas.width  / 2 );
-  vector.y = Math.round( ( - vector.y + 1 ) * canvas.height / 2 );
-  vector.z = 0;
- // console.log(vector.x + " // " + vector.y);
-}
 
 
 Renderer.prototype.reset = function () {

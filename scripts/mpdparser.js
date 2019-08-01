@@ -71,6 +71,7 @@ function MPDParser() {
     this.viewportAS = {}; // list of extractor track AS. key=ASID, value=AS
     this.viewportDep = {}; // list of viewport dependencies
     this.tilesAS = {}; // list of tile AS
+    this.mediaVP = {}; // list of media viewport
     this.viewPortBestRegion = {}; // this contains the best quality region vector.
     this.lastSegNr = null; // this is set once MPD is parsed and duration + segmentTemplate data is evaluated
     this.periodDuration = 0; // in seconds
@@ -190,6 +191,10 @@ MPDParser.prototype.init = function (xmlDoc) {
                 Log.warn("MPDParser", "More than one sphRegionQuality found. Multiple shape_types are not supported yet. Select first one.");
             }
             var regions = srqr[0].getElementsByTagNameNS(omafNS, "qualityInfo");
+            var cenAz = null;
+            var cenEl = null;
+            var azRange = null;
+            var elRange = null;
             var az = null;
             var el = null;
             var lowestQualRanking = null;
@@ -197,18 +202,31 @@ MPDParser.prototype.init = function (xmlDoc) {
                 var qr = parseInt(regions[j].getAttribute("quality_ranking"));
                 if (null == lowestQualRanking || qr < lowestQualRanking){
                     lowestQualRanking = qr;
-                    az = THREE.Math.degToRad(parseInt(regions[j].getAttribute("centre_azimuth")) / 65536.0);
-                    el = THREE.Math.degToRad(parseInt(regions[j].getAttribute("centre_elevation")) / 65536.0);
+                    cenAz = parseInt(regions[j].getAttribute("centre_azimuth"));
+                    cenEl = parseInt(regions[j].getAttribute("centre_elevation"));
+                    azRange = parseInt(regions[j].getAttribute("azimuth_range"));
+                    elRange = parseInt(regions[j].getAttribute("elevation_range"));
+                    az = THREE.Math.degToRad(cenAz / 65536.0);
+                    el = THREE.Math.degToRad(cenEl / 65536.0);
                 }else if(qr == lowestQualRanking ){
                     if(parseInt(regions[j].getAttribute("centre_azimuth"))){
+                        cenAz += parseInt(regions[j].getAttribute("centre_azimuth"));
                         az += THREE.Math.degToRad(parseInt(regions[j].getAttribute("centre_azimuth")) / 65536.0);
                     }
                     if(parseInt(regions[j].getAttribute("centre_elevation"))){
+                        cenEl += parseInt(regions[j].getAttribute("centre_elevation"));
                         el += THREE.Math.degToRad(parseInt(regions[j].getAttribute("centre_elevation")) / 65536.0);
+                    }
+                    if(parseInt(regions[j].getAttribute("azimuth_range"))){
+                        azRange += parseInt(regions[j].getAttribute("azimuth_range"));
+                    }
+                    if(parseInt(regions[j].getAttribute("elevation_range"))){
+                        elRange += parseInt(regions[j].getAttribute("elevation_range"));
                     }
                 }
             }
             this.viewPortBestRegion[asID] = new THREE.Vector3( Math.cos(el)*Math.cos(az), Math.cos(el)*Math.sin(az), Math.sin(el) );
+            this.mediaVP[asID] = new ViewportDataType(asID, cenAz, cenEl, 0, azRange, elRange);
         }
 
         // get tile adaptation sets 'hvc1'
@@ -263,6 +281,13 @@ MPDParser.prototype.getTileAS = function (asID) {
     }
     return null;
 }
+MPDParser.prototype.getMediaVP = function(asID) {
+    if (this.mediaVP.hasOwnProperty(asID)) {
+        return this.mediaVP[asID];
+    }
+    return null;
+}
+
 
 // for now only SegmentTemplate is supported
 MPDParser.prototype.getVPinitSegURLs = function(){
@@ -490,6 +515,9 @@ MPDParser.prototype.getMimeType = function(){
     }
     return mimeType;
 }
+
+
+
 
 MPDParser.prototype.reset = function(){
     delete this.initialized;

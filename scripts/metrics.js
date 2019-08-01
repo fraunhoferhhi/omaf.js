@@ -71,34 +71,36 @@ function Metrics() {
   this.viewpointSwitchingLatencyList = [];
 }
 
-function ViewportDataType() {
-  this.viewpoint_id = null;
-  this.centre_azimuth = null;
-  this.centre_tilt = null; 
-  this.azimuth_range = null; 
-  this.elevation_range = null; 
+function ViewportDataType(vpID, cenAz, cenEl, cenTi, azRange, elRange) {
+  this.viewpoint_id = vpID;       // Specifies the identifier of the viewpoint to which the viewport belongs.
+                                  // The value of viewpoint is always 'vp1' or Nokia mpd file doesn't have this value. As an alternative, use track id.  
+  this.centre_azimuth = cenAz;    // Specifies the azimuth of the centre of the viewport
+  this.centre_elevation = cenEl;  // Specifies the elevation of the centre of the viewport 
+  this.centre_tilt = cenTi;       // Specifies the tilt angle of the viewport 
+  this.azimuth_range = azRange;   // Specifies the azimuth range of the viewport 
+  this.elevation_range = elRange; // Specifies the elevation range of the viewport  
 }
 
-function RenderedViewport() {
-  this.startTime = null;
-  this.duration = null;
-  this.viewport = null;
+function RenderedViewport(time, duration, viewport) {
+  this.startTime = time;
+  this.duration = duration;
+  this.viewport = viewport;
 }
 
-function CQViewportSwitchingLatency() {
-  this.firstViewport = null;
-  this.secondViewport = null;
-  this.firstViewportQuality = null;
-  this.secondViewportQuality = null;
-  this.t = null;
-  this.latency = null;
-  this.reason = null;
+function CQViewportSwitchingLatency(firV, secV, fitVQ, secVQ, time, latency, reason) {
+  this.firstViewport = firV;
+  this.secondViewport = secV;
+  this.firstViewportQuality = fitVQ;
+  this.secondViewportQuality = secVQ;
+  this.t = time;
+  this.latency = latency;
+  this.reason = reason;
 }
 
-function ViewpointSwitchingLatency() {
-  this.targetViewport = null;
-  this.t = null;
-  this.latency = null;
+function ViewpointSwitchingLatency(targetV, time, latency) {
+  this.targetViewport = targetV;
+  this.t = time;
+  this.latency = latency;
 }
 
 Metrics.prototype.init = function (renderedFovH, renderedFovV, resolution) {
@@ -123,16 +125,25 @@ Metrics.prototype.init = function (renderedFovH, renderedFovV, resolution) {
 }
 
 Metrics.prototype.updateResolution = function (resolution) {
-  if (resolution || strValue === ""){
+  if (!resolution || resolution === ""){
     Log.warn("Metrics", "No resolution value.");
     return;
   }
   this.displayInfoSet.displayResolution = resolution;
 }
 Metrics.prototype.updateRefreshRate = function (rate) {
-  if (rate){
+  if (!rate){
     Log.warn("Metrics", "No RefreshRate value.");
     return;
   }
   this.displayInfoSet.displayRefreshRate = rate;
+}
+
+Metrics.prototype.updateRenderedViewport = function (time, duration, viewport) {
+  
+  if (!time || !duration || !viewport){
+    Log.warn("Metrics", "No RenderedViewport value.");
+    return;
+  }
+  this.RenderedViewportList.push(new RenderedViewport(time, duration, viewport));
 }
