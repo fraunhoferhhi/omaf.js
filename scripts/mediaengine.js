@@ -84,7 +84,7 @@ function MediaEngine() {
 
     this.currentTrackID = null;     // hvc2_trackID which is selected for playback
     this.switchTrackID  = null;
-    this.currentSegNum  = 0;     // segment number which is selected for playback
+    this.downloadedSegNum  = 0;     // segment number which is downloaded
     this.lastSegNum     = 0;
     this.mainBufSegNum  = 0; 
     this.subBufSegNum   = 0;
@@ -392,7 +392,7 @@ MediaEngine.prototype.initSubMSE = function(){
                         self.isRemoveBuf = false;
                         self.isReset = false;
                     }else{
-                        if(self.currentSegNum > 1){
+                        if(self.downloadedSegNum > 1){
                             if(!self.isRemoveBuf){
                                 //self.onMediaProcessed();
                             }else{
@@ -451,11 +451,11 @@ MediaEngine.prototype.processMedia = function (arrayOfMoofMdats, segNum){
     //this.currentSegNum = segNum;
     var self = this;
     this.isBusy = true;
-    this.currentSegNum++;
+    this.downloadedSegNum++;
    // Log.warn("ME","processMedia segnum : " + segNum +  " the track ID is : "+ this.currentTrackID);
 
 
-    if(this.currentSegNum == this.lastSegNum && this.lastSegNum > 0){
+    if(this.downloadedSegNum == this.lastSegNum && this.lastSegNum > 0){
         this.isLastBuf = true;
     }
 
@@ -463,13 +463,14 @@ MediaEngine.prototype.processMedia = function (arrayOfMoofMdats, segNum){
    
     if(this.currentTrackID != this.switchTrackID){
         
-        var difSegNum =  this.currentSegNum - this.preSegNum ;
+        var difSegNum =  this.downloadedSegNum - this.preSegNum ;
+        var preTrackID = this.switchTrackID;
         //Log.warn("ME","processMedia segnum : " + difSegNum +  " the track ID is : "+ this.currentTrackID);
-        this.preSegNum = this.currentSegNum;
+        this.preSegNum = this.downloadedSegNum;
         this.isSubBuffer = !this.isSubBuffer;
         this.nextDecodeTime = 0;
         this.switchTrackID = this.currentTrackID;
-        this.onSwitchTrack(this.currentTrackID, this.currentSegNum, difSegNum);
+        this.onSwitchTrack(this.currentTrackID, this.downloadedSegNum, difSegNum, preTrackID);
     }
 
     this.resetActiveMp4Box(this.currentTrackID);
@@ -500,9 +501,9 @@ MediaEngine.prototype.processMedia = function (arrayOfMoofMdats, segNum){
     this.isBusy = false;
 
     var bufObj = {
-        mediaData: this.lastMediaSegment,
+        mediaData: self.lastMediaSegment,
         isSubBuf: self.isSubBuffer,
-        segNum: self.currentSegNum,
+        segNum: self.downloadedSegNum,
         trackID: self.currentTrackID,
     };
     this.manageBufferQ.enqueue(bufObj);
@@ -822,12 +823,13 @@ MediaEngine.prototype.isMainBufActive = function(){
     return this.isMainActive;
 }
 
+
 MediaEngine.prototype.reset = function(isLoop){
     if(isLoop){
         this.currentTrackID = 0;
         this.isSubBuffer    = false;
         this.isLastBuf      = false;
-        this.currentSegNum  = 0;     
+        this.downloadedSegNum  = 0;     
         this.mainBufSegNum  = 0; 
         this.subBufSegNum   = 0;
         this.nextDecodeTime = 0; 
@@ -858,7 +860,7 @@ MediaEngine.prototype.reset = function(isLoop){
 
         delete this.currentTrackID;     
         delete this.switchTrackID;
-        delete this.currentSegNum;  
+        delete this.downloadedSegNum;  
         delete this.mainBufSegNum; 
         delete this.subBufSegNum; 
         delete this.trackRefs;   

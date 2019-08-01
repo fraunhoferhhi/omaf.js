@@ -100,7 +100,8 @@ function OMAFPlayer () {
     this.pauseReq       = null;
     this.metricsReq     = null;
     this.maxDifSegNum   = 0;
-    this.longestMediaTimeMS   = 0;
+    this.recentChangedSegNum    = 0;
+    this.longestMediaTimeMS     = 0;
     this.firstTrackID   = null;  
 
     this.vidElement = null;
@@ -253,13 +254,17 @@ OMAFPlayer.prototype.init = function(vidElement, subVidElement, renderElement, s
             clearInterval(self.mainBufReq);
             clearInterval(self.subBufReq);
             clearInterval(self.pauseReq);
-            clearInterval(self.metricsReq);
+            //clearInterval(self.metricsReq);
             self.vidElement.play();
             self.RE.mainRenderVideo();
             self.renderElement.style.zIndex = "10";
             self.subRenderElement.style.zIndex = "8";
             self.RE.readyToChangeTrack(false);
             self.RE.setIsAniPause(false);
+            self.maxDifSegNum   = 0;
+            self.recentChangedSegNum    = 0;
+            self.longestMediaTimeMS     = 0;
+            self.MT.reset();
             self.isReset = false;
             self.isOnMainVid = true;   
         }
@@ -412,7 +417,7 @@ OMAFPlayer.prototype.init = function(vidElement, subVidElement, renderElement, s
         }
     }
     
-    this.ME.onSwitchTrack = function(trackID, segNum, difSegNum){
+    this.ME.onSwitchTrack = function(trackID, segNum, difSegNum, preTrackID){
         var switchObj = {
             trackID: trackID,
             segNum: segNum,
@@ -427,33 +432,34 @@ OMAFPlayer.prototype.init = function(vidElement, subVidElement, renderElement, s
         }else{
             self.segDifArr.push(((difSegNum * self.segmentDuration) / 1000));
         }
-        var currntMediaTime = self.SE.getCurrentTime();
+        var curMediaTime = self.SE.getCurrentTime();
         var mediaViewport = null;
         var startTime = 0;
+        var initSegNum = self.MP.getFirstSegmentNr() - 1;
+        if(initSegNum < 0){
+            initSegNum = 0;
+        }
+        var bufMediaTime = ((parseInt(self.ME.downloadedSegNum) + initSegNum)*self.segmentDuration) - curMediaTime;
         if(self.maxDifSegNum === 0){ // first track change
-            if(self.MP.getFirstSegmentNr() > 1){
-                startTime = currntMediaTime - difSegNum * self.segmentDuration;
-            }
-            if(difSegNum * self.segmentDuration < currntMediaTime - (self.MP.getFirstSegmentNr() * self.segmentDuration)){
-                self.longestMediaTimeMS = currntMediaTime - (self.MP.getFirstSegmentNr() * self.segmentDuration);
-                mediaViewport = self.MP.getMediaVP(self.firstTrackID);
-                self.MT.updateRenderedViewport(startTime, self.longestMediaTimeMS, mediaViewport);
-            }else{
+            if(self.MT.RenderedViewportList.length === 0){
+                if(self.MP.getFirstSegmentNr() > 1){ // in case of live
+                    startTime = (curMediaTime + bufMediaTime) - difSegNum * self.segmentDuration;
+                }
                 self.longestMediaTimeMS = difSegNum * self.segmentDuration;
-                mediaViewport = self.MP.getMediaVP(trackID);
-                self.MT.updateRenderedViewport(startTime, self.longestMediaTimeMS, mediaViewport);
+                mediaViewport = self.MP.getMediaVP(self.firstTrackID);
+                self.MT.updateLongestRenderedViewport(startTime, self.longestMediaTimeMS, mediaViewport);
             }
             self.maxDifSegNum = difSegNum;
         }else{
             if(self.maxDifSegNum < difSegNum){
-                startTime = currntMediaTime - difSegNum * self.segmentDuration;
+                startTime = (curMediaTime + bufMediaTime) - difSegNum * self.segmentDuration;
                 self.longestMediaTimeMS = difSegNum * self.segmentDuration;
-                mediaViewport = self.MP.getMediaVP(trackID);
-                self.MT.updateRenderedViewport(startTime, self.longestMediaTimeMS, mediaViewport);
+                mediaViewport = self.MP.getMediaVP(preTrackID);
+                self.MT.updateLongestRenderedViewport(startTime, self.longestMediaTimeMS, mediaViewport);
                 self.maxDifSegNum = difSegNum;
             }
         }
-        
+        self.recentChangedSegNum = segNum + initSegNum;
     }
 
     this.ME.onSwitchGeometry = function(trackID, isSub){
@@ -473,22 +479,40 @@ OMAFPlayer.prototype.init = function(vidElement, subVidElement, renderElement, s
     }
 
     this.MT.onCheckRecentRenderedViewport = function(renderedViewportList){
-        var currntMediaTime = self.SE.getCurrentTime();
+        var curMediaTime = self.SE.getCurrentTime();
         var mediaViewport = null;
         var startTime = 0;
-        if(self.MP.getFirstSegmentNr() > 1){
-            startTime = currntMediaTime - self.ME.currentSegNum * self.segmentDuration; // currnet SegNum of ME starts from 0.
+        var initSegNum = self.MP.getFirstSegmentNr() - 1;
+        if(initSegNum < 0){
+            initSegNum = 0;
         }
-        if(!renderedViewportList){
-            self.longestMediaTimeMS = self.SE.getCurrentTime() - (self.MP.getFirstSegmentNr() * self.segmentDuration);
-            mediaViewport = self.MP.getMediaVP(self.firstTrackID);
-            self.MT.updateRenderedViewport(startTime, self.longestMediaTimeMS, mediaViewport);
-        }else{
-            var lastVP = renderedViewportList[renderedViewportList.length - 1];
-            var elapsedTime = self.SE.getCurrentTime()- lastVP.startTime;
-            self.longestMediaTimeMS = elapsedTime;
-            self.MT.updateRenderedViewport(lastVP.startTime, self.longestMediaTimeMS, lastVP.viewport);
+        var bufMediaTime = ((parseInt(self.ME.downloadedSegNum) + initSegNum)*self.segmentDuration) - curMediaTime;
+        if(curMediaTime > self.MP.getFirstSegmentNr() * self.segmentDuration){   
+            if(renderedViewportList.length === 0){
+                if(self.MP.getFirstSegmentNr() > 1){
+                    startTime = (curMediaTime + bufMediaTime) - self.ME.downloadedSegNum * self.segmentDuration; 
+                }
+                self.longestMediaTimeMS = (curMediaTime + bufMediaTime) - (initSegNum * self.segmentDuration);
+                mediaViewport = self.MP.getMediaVP(self.firstTrackID);
+                self.MT.updateLongestRenderedViewport(startTime, self.longestMediaTimeMS, mediaViewport);
+            }else{
+                var lastVP = renderedViewportList[renderedViewportList.length - 1];
+                var elapsedTime;
+                if(self.maxDifSegNum === 0){ // still on the first viewport
+                    elapsedTime = (curMediaTime + bufMediaTime)- lastVP.startTime; //use 'lastVP.startTime' for calculating live time
+                    self.longestMediaTimeMS = elapsedTime;
+                    self.MT.updateLongestRenderedViewport(lastVP.startTime, self.longestMediaTimeMS, lastVP.viewport);
+                }else{
+                    startTime = self.recentChangedSegNum * self.segmentDuration;
+                    elapsedTime = (curMediaTime + bufMediaTime) - startTime;
+                    if(self.maxDifSegNum * self.segmentDuration < elapsedTime){
+                        self.longestMediaTimeMS = elapsedTime;
+                        self.MT.updateLongestRenderedViewport(startTime, self.longestMediaTimeMS, lastVP.viewport);
+                    }
+                }           
+            }
         }
+        
     }
 
     if (document.addEventListener)
@@ -518,8 +542,12 @@ OMAFPlayer.prototype.start = function(strMPD){
 OMAFPlayer.prototype.isBufferFullyLoaded = function() {
     self = this;
     curTime = (self.SE.getCurrentTime());
-    bufferAvailable = ( parseInt(self.ME.currentSegNum)*self.segmentDuration) - curTime; 
-    Log.info("Player"," buffer full last buffered segment  " + self.ME.currentSegNum );
+    var initSegNum = self.MP.getFirstSegmentNr() - 1;
+    if(initSegNum < 0){
+        initSegNum = 0;
+    }
+    bufferAvailable = ((parseInt(self.ME.downloadedSegNum) + initSegNum)*self.segmentDuration) - curTime; 
+    Log.info("Player"," buffer full last buffered segment  " + self.ME.downloadedSegNum );
     Log.info("Player"," segment playbacked  " + ((curTime/self.segmentDuration) ).toFixed(0) );
  
     if( (bufferAvailable + parseInt(self.segmentDuration) ) > (self.bufferLimitTime) )
@@ -534,8 +562,11 @@ OMAFPlayer.prototype.isBufferFullyLoaded = function() {
 OMAFPlayer.prototype.fillMyBuffer = function() {
     self = this;
     curTime = (self.SE.getCurrentTime());
-
-    bufferAvailable = ( parseInt(self.ME.currentSegNum)*self.segmentDuration) - curTime; 
+    var initSegNum = self.MP.getFirstSegmentNr() - 1;
+    if(initSegNum < 0){
+        initSegNum = 0;
+    }
+    bufferAvailable = ((parseInt(self.ME.downloadedSegNum) + initSegNum)*self.segmentDuration) - curTime; 
     
     if( (bufferAvailable + parseInt(self.segmentDuration) ) > (self.bufferLimitTime) ){
         decisionOffset  =  (bufferAvailable + parseInt(self.segmentDuration) ) - (self.bufferLimitTime);
@@ -733,6 +764,9 @@ OMAFPlayer.prototype.checkMetrics = function(){
         */
         var posVecCube = self.sphereCoordToCube(posVecSphere);
 
+       // self.MT.checkLongestRenderedViewport();
+        
+
     },200);
    
 }
@@ -922,6 +956,9 @@ OMAFPlayer.prototype.reset = function(){
         this.isAddDif       = false;
 
         this.bufferOffsetTime = 0;
+        this.maxDifSegNum   = 0;
+        this.recentChangedSegNum    = 0;
+        this.longestMediaTimeMS     = 0;
 
         this.switchInfoQ = new Queue;
         this.isPlaying = false;

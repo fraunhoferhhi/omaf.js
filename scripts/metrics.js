@@ -139,7 +139,7 @@ Metrics.prototype.updateRefreshRate = function (rate) {
   }
   this.displayInfoSet.displayRefreshRate = rate;
 }
-Metrics.prototype.updateRenderedViewport = function (time, duration, viewport) {
+Metrics.prototype.updateLongestRenderedViewport = function (time, duration, viewport) {
   if (!duration || !viewport){
     Log.warn("Metrics", "No RenderedViewport value.");
     return;
@@ -147,6 +147,16 @@ Metrics.prototype.updateRenderedViewport = function (time, duration, viewport) {
   this.RenderedViewportList.push(new RenderedViewport(time, duration, viewport));
 }
 
-Metrics.prototype.getRecentRenderedViewport = function () {
+Metrics.prototype.checkLongestRenderedViewport = function () {
   this.onCheckRecentRenderedViewport(this.RenderedViewportList);
+}
+
+Metrics.prototype.reset = function () {
+
+  delete this.RenderedViewportList;
+  delete this.cqViewportSwitchingLatencyList;
+  delete this.viewpointSwitchingLatencyList;
+  this.RenderedViewportList = [];
+  this.cqViewportSwitchingLatencyList = [];
+  this.viewpointSwitchingLatencyList = []
 }
