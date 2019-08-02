@@ -89,14 +89,19 @@ function RenderedViewport(time, duration, viewport) {
 }
 
 function CQViewportSwitchingLatency(firV, secV, fitVQ, secVQ, time, latency, reason) {
-  this.firstViewport = firV;
-  this.secondViewport = secV;
-  this.firstViewportQuality = fitVQ;
-  this.secondViewportQuality = secVQ;
-  this.t = time;
-  this.latency = latency;
-  this.reason = reason;
+  this.firstViewport = firV;            // Specifies the spherical region corresponding to the first viewport 
+  this.secondViewport = secV;           // Specifies the spherical region corresponding to the second viewport 
+  this.firstViewportQuality = fitVQ;    // Specifies the quality value of the first viewport
+  this.secondViewportQuality = secVQ;   // Specifies the quality value of the second viewport
+  this.t = time;                        // Specifies the measurement time of the viewport switching latency 
+  this.latency = latency;               // Specifies the delay in milliseconds between the time a user movement from first viewport to second viewport 
+  this.reason = reason;                 // Specifies a list of possible causes for the latency
 }
+var resonEnum = {
+  SEGMENT_DURATION: 0,
+  BUFFER_FULLNESS: 1,
+  AVAILABLILITY_CQ: 2,
+};
 
 function ViewpointSwitchingLatency(targetV, time, latency) {
   this.targetViewport = targetV;
@@ -149,6 +154,14 @@ Metrics.prototype.updateLongestRenderedViewport = function (time, duration, view
 
 Metrics.prototype.checkLongestRenderedViewport = function () {
   this.onCheckRecentRenderedViewport(this.RenderedViewportList);
+}
+
+Metrics.prototype.updateCQViewportSwitchingLatency = function (cqObj) {
+  if (!cqObj){
+    Log.warn("Metrics", "No RenderedViewport value.");
+    return;
+  }
+  this.cqViewportSwitchingLatencyList.push(cqObj);
 }
 
 Metrics.prototype.reset = function () {

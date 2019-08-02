@@ -75,6 +75,7 @@ function OMAFPlayer () {
     this.isTrackSwitch  = false;
     this.isEnterFullscreen = false;
     this.isFirstsegment = true;
+    this.isPushChangeVP = false;
 
     this.MP = null; // Manifest Parser
     this.ME = null; // Media Engine
@@ -103,6 +104,14 @@ function OMAFPlayer () {
     this.recentChangedSegNum    = 0;
     this.longestMediaTimeMS     = 0;
     this.firstTrackID   = null;  
+    this.fovH           = 0;
+    this.fovV           = 0;
+    this.renderedTrackID        = 0;
+    this.renderedPreTrackID     = 0;
+    this.userViewTrackID        = 0;
+    this.userChangeVPList       = [];
+    this.userChangeVPID         = 0;
+    
 
     this.vidElement = null;
     this.subVidElement  = null;
@@ -117,6 +126,7 @@ function OMAFPlayer () {
     this.readySubRender    = false;
 
     this.switchInfoQ = new Queue;
+    this.requestNextSegQ = new Queue;
     this.lastSegNum     = 0;   
     this.segmentDuration = null;
     this.bufferLimitTime = null;
@@ -254,6 +264,8 @@ OMAFPlayer.prototype.init = function(vidElement, subVidElement, renderElement, s
             clearInterval(self.mainBufReq);
             clearInterval(self.subBufReq);
             clearInterval(self.pauseReq);
+            self.userChangeVPList   = [];
+            self.userChangeVPID = 0;
             //clearInterval(self.metricsReq);
             self.vidElement.play();
             self.RE.mainRenderVideo();
@@ -374,7 +386,9 @@ OMAFPlayer.prototype.init = function(vidElement, subVidElement, renderElement, s
     this.RE.onInit = function () {
         self.SE.init(self.vidElement, "MASTER");
         var resolution = $(self.renderElement).width() + "x" + $(self.renderElement).height();
-        self.MT.init(this.getFovH(),this.getFovH(),resolution);
+        self.fovH = this.getFovH();
+        self.fovV = this.getFovV();
+        self.MT.init(self.fovH,self.fovV,resolution);
         self.checkMetrics(); 
         
         self.loadNextSegment(); // load first segment after init
@@ -394,6 +408,55 @@ OMAFPlayer.prototype.init = function(vidElement, subVidElement, renderElement, s
     this.RE.onChangeResolution = function (width, height) {
         var resolution = width + "x" + height;
         self.MT.updateResolution(resolution);
+    }
+
+    this.RE.onCheckUserViewport = function () {
+        var pos = self.RE.getOMAFPosition();
+        var yaw = pos.phi;
+        var pitch = pos.theta;
+        var asID = self.MP.getASIDfromYawPitch(yaw,pitch);
+        var curTrackID = self.ME.getTrackIDFromASID(asID);
+       
+        if (self.userViewTrackID !== curTrackID){ 
+            var viewportInfo = {yaw: yaw, pitch: pitch, trackID: curTrackID, mediaTime: self.SE.getCurrentTime()}
+            self.userChangeVPList.push(viewportInfo);
+            self.userViewTrackID = curTrackID;
+        }
+        if(self.isPushChangeVP){
+            var reqTime = self.requestNextSegQ.front().mediaTime;
+            var firstVP, secondVP;
+            var isAddfirstVP = false;
+            var switchingTime = 0;
+            
+            for( var i = self.userChangeVPID ; i < self.userChangeVPList.length ; i++){
+                if(self.userChangeVPList[i].mediaTime < reqTime){
+                    if(!isAddfirstVP){
+                        firstVP = new ViewportDataType(self.userChangeVPList[i].trackID, parseInt(THREE.Math.radToDeg(self.userChangeVPList[i].yaw) * 65536),
+                                            parseInt(THREE.Math.radToDeg(self.userChangeVPList[i].pitch) * 65536), 0 ,
+                                            parseInt(self.fovH * 65536), parseInt(self.fovV * 65536));
+                        switchingTime = self.userChangeVPList[i].mediaTime;
+                        isAddfirstVP = true;
+                        
+                    }
+                    self.userChangeVPID = i + 1;
+                }else{
+                    self.userChangeVPID = i;
+                    break;
+                }
+            }
+            
+            secondVP = new ViewportDataType(curTrackID, parseInt(THREE.Math.radToDeg(yaw) * 65536),
+                                parseInt(THREE.Math.radToDeg(pitch) * 65536), 0 ,
+                                parseInt(self.fovH * 65536), parseInt(self.fovV * 65536));
+            var latency = self.SE.getCurrentTime() - switchingTime;
+            var reason = [resonEnum.SEGMENT_DURATION, resonEnum.BUFFER_FULLNESS];
+            if(firstVP){
+                self.MT.updateCQViewportSwitchingLatency(new CQViewportSwitchingLatency(firstVP, secondVP, 1, 1, switchingTime, latency, reason));
+            }
+            self.requestNextSegQ.dequeue();
+            self.isPushChangeVP = false;
+        }
+        //self.MP.getIsUserVPOutOfHQ(self.renderedTrackID, userYaw, userPitch, self.fovH, self.fovV);
     }
 
     this.ME.onMediaProcessed = function () {
@@ -689,7 +752,7 @@ OMAFPlayer.prototype.loadNextSegment = function(){
     
     var asID = this.MP.getASIDfromYawPitch(this.yaw, this.pitch);
     this.trackID = this.ME.getTrackIDFromASID(asID);
-    
+   
     if(this.isFirstsegment){
         if(this.isReset){
             this.trackID = this.preTrackID;
@@ -698,6 +761,8 @@ OMAFPlayer.prototype.loadNextSegment = function(){
         }
         this.RE.matchTracktoCube(this.trackID);
         this.RE.subMatchTracktoCube(this.trackID);
+        this.renderedTrackID = this.trackID;
+        this.userViewTrackID = this.trackID;
         this.isFirstsegment = false;
         this.firstTrackID = this.trackID;
     }else if(!this.isTrackSwitch){
@@ -716,6 +781,13 @@ OMAFPlayer.prototype.loadNextSegment = function(){
         }
     }
     var mediaURLs = this.MP.getMediaRequestsSimple(this.yaw, this.pitch, this.segmentNr);
+    if(this.preTrackID != this.trackID && this.preTrackID != 0){
+        var switchObj = {
+            trackID: this.trackID,
+            mediaTime: this.SE.getCurrentTime(),
+        };
+        this.requestNextSegQ.enqueue(switchObj);
+    }
     
     this.preTrackID = this.trackID;
     this.preYaw = this.yaw;
@@ -749,23 +821,10 @@ OMAFPlayer.prototype.checkMetrics = function(){
             self.displayHZ = hz;
             self.MT.updateRefreshRate(self.displayHZ);
             //console.log(self.displayHZ);
-        }
-        var pos = self.RE.getOMAFPosition();
-        var yaw = pos.phi; 
-        var pitch = pos.theta;
-        var posVecSphere = new THREE.Vector3( Math.cos(pitch)*Math.cos(yaw), 
-                                    Math.cos(pitch)*Math.sin(yaw), 
-                                    Math.sin(pitch) );
-        /*
-        cAzimuthTop = yaw + (self.RE.getFovH() / 2);
-        cAzimuthBot = yaw - (self.RE.getFovH() / 2);
-        cElevationTop = pitch + (self.RE.getFovV() / 2);
-        cElevationBot = pitch - (self.RE.getFovV() / 2);
-        */
-        var posVecCube = self.sphereCoordToCube(posVecSphere);
-
-       // self.MT.checkLongestRenderedViewport();
-        
+        }     
+        //var posVecCube = self.sphereCoordToCube(posVecSphere);
+        self.MT.checkLongestRenderedViewport();
+       
 
     },200);
    
@@ -842,6 +901,9 @@ OMAFPlayer.prototype.checkSubBuffer = function(vidTime){
             self.renderElement.style.zIndex = "8";
             self.subRenderElement.style.zIndex = "10";
             
+            self.renderedPreTrackID = self.renderedTrackID;
+            self.renderedTrackID = self.switchInfoQ.front().trackID;
+            self.isPushChangeVP = true;
             self.RE.readyToChangeTrack(true);
             self.RE.setIsAniPause(false);
             self.SE.activeVideoElement("SLAVE",(self.switchInfoQ.front().segNum) -1);
@@ -855,9 +917,13 @@ OMAFPlayer.prototype.checkSubBuffer = function(vidTime){
             while(!self.switchInfoQ.empty()){
                 self.switchInfoQ.dequeue();
             }
+            while(!self.requestNextSegQ.empty()){
+                self.requestNextSegQ.dequeue();
+            }
             self.segmentNr = 1;
             self.isFirstsegment = true;
             self.bufferOffsetTime = 0; 
+            self.renderedTrackID = 0;
             self.SE.activeVideoElement("MASTER",0);
             self.RE.setIsAniPause(true);
             self.ME.removeBuf(false, true);
@@ -891,8 +957,11 @@ OMAFPlayer.prototype.checkMainBuffer = function(vidTime){
             self.vidElement.play();
             self.renderElement.style.zIndex = "10";
             self.subRenderElement.style.zIndex = "8";
-            self.RE.readyToChangeTrack(false);
 
+            self.renderedPreTrackID = self.renderedTrackID;
+            self.renderedTrackID = self.switchInfoQ.front().trackID;
+            self.isPushChangeVP = true;
+            self.RE.readyToChangeTrack(false);
             self.RE.setIsAniPause(false);
             self.SE.activeVideoElement("MASTER",(self.switchInfoQ.front().segNum) -1);
         
@@ -906,9 +975,13 @@ OMAFPlayer.prototype.checkMainBuffer = function(vidTime){
             while(!self.switchInfoQ.empty()){
                 self.switchInfoQ.dequeue();
             }
+            while(!self.requestNextSegQ.empty()){
+                self.requestNextSegQ.dequeue();
+            }
             self.segmentNr = 1;
             self.isFirstsegment = true;
             self.bufferOffsetTime = 0;
+            self.renderedTrackID = 0;
             self.SE.activeVideoElement("MASTER",0);
             self.RE.setIsAniPause(true);
             self.ME.removeBuf(true, true);
@@ -954,11 +1027,13 @@ OMAFPlayer.prototype.reset = function(){
         this.tIdCount       = 1;
         this.segDifArr      = [];
         this.isAddDif       = false;
+        this.userChangeVPList   = [];
 
         this.bufferOffsetTime = 0;
         this.maxDifSegNum   = 0;
         this.recentChangedSegNum    = 0;
         this.longestMediaTimeMS     = 0;
+        this.renderedTrackID = 0;
 
         this.switchInfoQ = new Queue;
         this.isPlaying = false;

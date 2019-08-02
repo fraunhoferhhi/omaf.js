@@ -109,7 +109,9 @@ function Renderer() {
   this.onInit   = null;
   this.onSwitchRender = null;
   this.onChangeResolution  = null;
+  this.onCheckUserViewport  = null;
 }
+
 
 Renderer.prototype.getFragmentShader = function(){
   return `
@@ -624,6 +626,7 @@ Renderer.prototype.animate = function () {
   this.stats.begin();
   this.renderVideo();
   this.stats.end();
+  this.onCheckUserViewport();
 
   this.aniReq = window.webkitRequestAnimationFrame(function () { self.animate(); });
   

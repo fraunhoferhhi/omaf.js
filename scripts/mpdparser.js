@@ -209,19 +209,12 @@ MPDParser.prototype.init = function (xmlDoc) {
                     az = THREE.Math.degToRad(cenAz / 65536.0);
                     el = THREE.Math.degToRad(cenEl / 65536.0);
                 }else if(qr == lowestQualRanking ){
+                    
                     if(parseInt(regions[j].getAttribute("centre_azimuth"))){
-                        cenAz += parseInt(regions[j].getAttribute("centre_azimuth"));
                         az += THREE.Math.degToRad(parseInt(regions[j].getAttribute("centre_azimuth")) / 65536.0);
                     }
                     if(parseInt(regions[j].getAttribute("centre_elevation"))){
-                        cenEl += parseInt(regions[j].getAttribute("centre_elevation"));
                         el += THREE.Math.degToRad(parseInt(regions[j].getAttribute("centre_elevation")) / 65536.0);
-                    }
-                    if(parseInt(regions[j].getAttribute("azimuth_range"))){
-                        azRange += parseInt(regions[j].getAttribute("azimuth_range"));
-                    }
-                    if(parseInt(regions[j].getAttribute("elevation_range"))){
-                        elRange += parseInt(regions[j].getAttribute("elevation_range"));
                     }
                 }
             }
@@ -287,6 +280,77 @@ MPDParser.prototype.getMediaVP = function(asID) {
     }
     return null;
 }
+
+//the azimuth range of highest quality viewport in cube is always 100 degree and the azimuth range of fov is bigger than 100.
+//in case of cube , it's always false.
+//todo: calculate viewport quality in considering all regions and then return quality value.   
+MPDParser.prototype.getIsUserVPOutOfHQ = function (asID, userYaw, userPitch, fovH, fovV){
+    if (!this.mediaVP.hasOwnProperty(asID)) {
+        Log.warn("MPDParser", "Not proper trackID");
+        return;
+    }
+    var result = true;
+    var curMediaVP = this.mediaVP[asID];
+    mediaAziLeft = ( curMediaVP.centre_azimuth - curMediaVP.azimuth_range / 2 ) / 65536	
+    mediaAziRight = ( curMediaVP.centre_azimuth + curMediaVP.azimuth_range / 2 ) / 65536
+    mediaEleBot = ( curMediaVP.centre_elevation - curMediaVP.elevation_range / 2 ) / 65536
+    mediaEleTop = ( curMediaVP.centre_elevation + curMediaVP.elevation_range / 2 ) / 65536
+
+    userAziLeft = userYaw - (fovH / 2);
+    userAziRight = userYaw + (fovH / 2);
+    userEleBot = userPitch - (fovV / 2);
+    userEleTop = userPitch + (fovV / 2);
+    
+    if(userAziRight > 180){
+        userAziRight = userAziRight - 360;
+    }else if(userAziLeft < -180){
+        userAziLeft = userAziLeft + 360;
+    }
+    if(userEleTop > 90){
+        userEleTop = userEleTop - 180;
+    }else if(userEleBot < -90){
+        userEleBot = userEleBot + 180;
+    }
+
+    if(mediaAziRight > 180 || mediaAziLeft < -180){
+        var minAziExRange, maxAziExRange;
+        if(mediaAziRight > 180){
+            minAziExRange =  mediaAziRight - 360;
+            maxAziExRange =  mediaAziLeft;
+        }else{
+            minAziExRange =  mediaAziRight;
+            maxAziExRange =  mediaAziLeft + 360;
+        }
+        if( (minAziExRange < userAziLeft &&  userAziLeft < maxAziExRange) || (minAziExRange < userAziRight &&  userAziRight < maxAziExRange) ){
+            result = false;
+        }
+    }else{
+        if( !((mediaAziLeft < userAziLeft &&  userAziLeft < mediaAziRight) && (mediaAziLeft < userAziRight &&  userAziRight < mediaAziRight)) ){
+            result = false;
+        }
+    }
+    if(mediaEleTop > 90 || mediaEleBot < -90){
+        var minEleExRange, maxEleExRange;
+        if(mediaEleTop > 90){
+            minEleExRange =  mediaEleTop - 180;
+            maxEleExRange =  mediaEleBot;
+        }else{
+            minEleExRange =  mediaEleTop;
+            maxEleExRange =  mediaEleBot + 180;
+        }
+        if( (minEleExRange < userEleBot &&  userEleBot < maxEleExRange) || (minEleExRange < userEleTop &&  userEleTop < maxEleExRange) ){
+            result = false;
+        }
+    }else{
+        if( !((mediaEleBot < userEleBot &&  userEleBot < mediaEleTop) && (mediaEleBot < userEleTop &&  userEleTop < mediaEleTop)) ){
+            result = false;
+        }
+    }
+
+    return result;
+
+}
+
 
 
 // for now only SegmentTemplate is supported
