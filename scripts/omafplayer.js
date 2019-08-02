@@ -385,11 +385,10 @@ OMAFPlayer.prototype.init = function(vidElement, subVidElement, renderElement, s
         
     this.RE.onInit = function () {
         self.SE.init(self.vidElement, "MASTER");
-        var resolution = $(self.renderElement).width() + "x" + $(self.renderElement).height();
+        var resolution = $(self.renderElement).width() + " x " + $(self.renderElement).height();
         self.fovH = this.getFovH();
         self.fovV = this.getFovV();
         self.MT.init(self.fovH,self.fovV,resolution);
-        self.checkMetrics(); 
         
         self.loadNextSegment(); // load first segment after init
         
@@ -406,7 +405,7 @@ OMAFPlayer.prototype.init = function(vidElement, subVidElement, renderElement, s
         }
     }
     this.RE.onChangeResolution = function (width, height) {
-        var resolution = width + "x" + height;
+        var resolution = width + " x " + height;
         self.MT.updateResolution(resolution);
     }
 
@@ -504,7 +503,7 @@ OMAFPlayer.prototype.init = function(vidElement, subVidElement, renderElement, s
         }
         var bufMediaTime = ((parseInt(self.ME.downloadedSegNum) + initSegNum)*self.segmentDuration) - curMediaTime;
         if(self.maxDifSegNum === 0){ // first track change
-            if(self.MT.RenderedViewportList.length === 0){
+            if(self.MT.renderedViewportList.length === 0){
                 if(self.MP.getFirstSegmentNr() > 1){ // in case of live
                     startTime = (curMediaTime + bufMediaTime) - difSegNum * self.segmentDuration;
                 }
@@ -799,35 +798,78 @@ OMAFPlayer.prototype.loadNextSegment = function(){
 }
 
 OMAFPlayer.prototype.getMetrics = function(){
+    var self = this;
     var metrics = {};
     if(this.RE.initialized){
         var pos = this.RE.getOMAFPosition();
         metrics["yaw"] = THREE.Math.radToDeg(pos.phi);
         metrics["pitch"] = THREE.Math.radToDeg(pos.theta);
-    } else{
-        metrics["yaw"] = this.yaw;
-        metrics["pitch"] = this.pitch;
-    }
-    metrics["trackID"] = this.trackID;
-    metrics["segNr"] = this.segmentNr;
-    return metrics;
-}
 
-OMAFPlayer.prototype.checkMetrics = function(){
-    var self = this;
-    self.metricsReq = setInterval(function (){
         var hz = Math.round(self.RE.getHZ());
         if(self.displayHZ === 0 || self.displayHZ !== hz){
             self.displayHZ = hz;
             self.MT.updateRefreshRate(self.displayHZ);
-            //console.log(self.displayHZ);
         }     
         //var posVecCube = self.sphereCoordToCube(posVecSphere);
         self.MT.checkLongestRenderedViewport();
+      
+        metrics["fovH"] = parseInt(self.MT.getRenderedFovSet().renderedFovH);
+        metrics["fovV"] = parseInt(self.MT.getRenderedFovSet().renderedFovV);
+        metrics["displayRes"] = self.MT.getDisplayInfoSet().displayResolution;
+        metrics["displayHz"] = self.MT.getDisplayInfoSet().displayRefreshRate;
+        if (self.MT.getRenderedViewportList()){
+            metrics["longestTr"] = self.MT.getRenderedViewportList().viewport.viewpoint_id;
+            metrics["longestStart"] = self.milliToTime(self.MT.getRenderedViewportList().startTime);
+            metrics["longestDur"] = self.MT.getRenderedViewportList().duration;
+        }else{
+            metrics["longestTr"] = 0;
+            metrics["longestStart"] = 0;
+            metrics["longestDur"] = 0;
+        }
+        if (self.MT.getCQViewportSwitchingLatencyList()){
+            metrics["cqFirVP"] = "y:" + parseInt(self.MT.getCQViewportSwitchingLatencyList().firstViewport.centre_azimuth / 65536)
+                                 + " p:" + parseInt(self.MT.getCQViewportSwitchingLatencyList().firstViewport.centre_elevation / 65536);
+            metrics["cqSecVP"] = "y:" + parseInt(self.MT.getCQViewportSwitchingLatencyList().secondViewport.centre_azimuth / 65536)
+                                + " p:" + parseInt(self.MT.getCQViewportSwitchingLatencyList().secondViewport.centre_elevation / 65536);
+            metrics["latency"] = self.MT.getCQViewportSwitchingLatencyList().latency;
+        }else{
+            metrics["cqFirVP"] = 0;
+            metrics["cqSecVP"] = 0;
+            metrics["latency"] = 0;
+        }
        
+    } else{
+        metrics["yaw"] = this.yaw;
+        metrics["pitch"] = this.pitch;
+        metrics["fovH"] = 0;
+        metrics["fovV"] = 0;
+        metrics["displayRes"] = 0;
+        metrics["displayHz"] = 0;
+        metrics["longestTr"] = 0;
+        metrics["longestStart"] = 0;
+        metrics["longestDur"] = 0;
+        metrics["cqFirVP"] = 0;
+        metrics["cqSecVP"] = 0;
+        metrics["latency"] = 0;
+    }
+    metrics["trackID"] = this.trackID;
+    metrics["segNr"] = this.segmentNr;
 
-    },200);
-   
+    
+    return metrics;
+}
+
+OMAFPlayer.prototype.milliToTime = function (millisec) {
+    var milliseconds = (millisec % 1000) / 100,
+    seconds = Math.floor((millisec / 1000) % 60),
+    minutes = Math.floor((millisec / (1000 * 60)) % 60),
+    hours = Math.floor((millisec / (1000 * 60 * 60)) % 24);
+
+    hours = (hours < 10) ? "0" + hours : hours;
+    minutes = (minutes < 10) ? "0" + minutes : minutes;
+    seconds = (seconds < 10) ? "0" + seconds : seconds;
+
+    return hours + ":" + minutes + ":" + seconds + "." + milliseconds;
 }
 
 OMAFPlayer.prototype.sphereCoordToCube = function (sphereVec3) {

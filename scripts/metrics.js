@@ -66,7 +66,7 @@ function Metrics() {
   this.initialized = false;
   this.renderedFovSet = null;
   this.displayInfoSet = null;
-  this.RenderedViewportList = [];
+  this.renderedViewportList = [];
   this.cqViewportSwitchingLatencyList = [];
   this.viewpointSwitchingLatencyList = [];
   this.oncheckRecentRenderedViewport  = null;
@@ -149,11 +149,11 @@ Metrics.prototype.updateLongestRenderedViewport = function (time, duration, view
     Log.warn("Metrics", "No RenderedViewport value.");
     return;
   }
-  this.RenderedViewportList.push(new RenderedViewport(time, duration, viewport));
+  this.renderedViewportList.push(new RenderedViewport(time, duration, viewport));
 }
 
 Metrics.prototype.checkLongestRenderedViewport = function () {
-  this.onCheckRecentRenderedViewport(this.RenderedViewportList);
+  this.onCheckRecentRenderedViewport(this.renderedViewportList);
 }
 
 Metrics.prototype.updateCQViewportSwitchingLatency = function (cqObj) {
@@ -164,12 +164,37 @@ Metrics.prototype.updateCQViewportSwitchingLatency = function (cqObj) {
   this.cqViewportSwitchingLatencyList.push(cqObj);
 }
 
+
+Metrics.prototype.getRenderedFovSet = function () {
+  return this.renderedFovSet;
+}
+
+Metrics.prototype.getDisplayInfoSet = function () {
+  return this.displayInfoSet;
+}
+
+Metrics.prototype.getRenderedViewportList = function () {
+  if(this.renderedViewportList.length === 0){
+    Log.warn("Metrics", "No RenderedViewportList value.");
+    return;
+  }
+  return this.renderedViewportList[this.renderedViewportList.length-1];
+}
+
+Metrics.prototype.getCQViewportSwitchingLatencyList = function () {
+  if(this.cqViewportSwitchingLatencyList.length === 0){
+    Log.warn("Metrics", "No RenderedViewportList value.");
+    return;
+  }
+  return this.cqViewportSwitchingLatencyList[this.cqViewportSwitchingLatencyList.length-1];
+}
+
 Metrics.prototype.reset = function () {
 
-  delete this.RenderedViewportList;
+  delete this.renderedViewportList;
   delete this.cqViewportSwitchingLatencyList;
   delete this.viewpointSwitchingLatencyList;
-  this.RenderedViewportList = [];
+  this.renderedViewportList = [];
   this.cqViewportSwitchingLatencyList = [];
   this.viewpointSwitchingLatencyList = []
 }

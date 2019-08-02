@@ -194,6 +194,16 @@ app.controller('OMAFController', function ($scope, manifests){
   $scope.pitch = 0;
   $scope.trackID = 0;
   $scope.segNr = 0;
+  $scope.fovH = 0;
+  $scope.fovV = 0;
+  $scope.displayRes = 0;
+  $scope.displayHz = 0;
+  $scope.longestTr = 0;
+  $scope.longestStart = 0;
+  $scope.longestDur = 0;
+  $scope.cqFirVP = 0;
+  $scope.cqSecVP = 0;
+  $scope.latency = 0;
 
   $scope.doLoop = function ($event) {
     $scope.player.loop($event.target);
@@ -247,6 +257,16 @@ app.controller('OMAFController', function ($scope, manifests){
     $scope.pitch = metrics.pitch.toFixed(2);
     $scope.trackID = metrics.trackID;
     $scope.segNr = metrics.segNr;
+    $scope.fovH = metrics.fovH;
+    $scope.fovV = metrics.fovV;
+    $scope.displayRes = metrics.displayRes;
+    $scope.displayHz = metrics.displayHz;
+    $scope.longestTr = metrics.longestTr;
+    $scope.longestStart = metrics.longestStart;
+    $scope.longestDur = metrics.longestDur;
+    $scope.cqFirVP = metrics.cqFirVP;
+    $scope.cqSecVP = metrics.cqSecVP;
+    $scope.latency = metrics.latency;
     // etc.
 
     // now put data to chart

@@ -208,3 +208,8 @@ video::-webkit-media-controls-fullscreen-button {
 .hide{
     display: none;
 }
+
+.scrollClass {
+    height:400px;
+    overflow-y: scroll;
+}
