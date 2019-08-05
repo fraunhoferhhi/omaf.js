@@ -140,6 +140,18 @@ app.controller('OMAFController', function ($scope, manifests){
     });
   }
 
+  // able/disable metrics info update
+  var metricsDebugControl = document.getElementById("metricsDebug");
+  if (metricsDebugControl !== null){
+    $scope.player.setMetricsDebugInfo(metricsDebugControl.checked);
+    metricsDebugControl.addEventListener("change", function(){
+      $scope.player.setMetricsDebugInfo(this.checked);
+      if(this.checked){
+        updateMetrics();
+      }
+    });
+  }
+
   // able/disable track switching
   var trackSwitchControl = document.getElementById("trackSwitchActivation");
   if (trackSwitchControl !== null){
@@ -251,38 +263,41 @@ app.controller('OMAFController', function ($scope, manifests){
   };
 
   function updateMetrics() {
-    var metrics = $scope.player.getMetrics();
+    if(metricsDebugControl.checked){
+      var metrics = $scope.player.getMetrics();
+      $scope.yaw= metrics.yaw.toFixed(2);
+      $scope.pitch = metrics.pitch.toFixed(2);
+      $scope.trackID = metrics.trackID;
+      $scope.segNr = metrics.segNr;
+      $scope.fovH = metrics.fovH;
+      $scope.fovV = metrics.fovV;
+      $scope.displayRes = metrics.displayRes;
+      $scope.displayHz = metrics.displayHz;
+      $scope.longestTr = metrics.longestTr;
+      $scope.longestStart = metrics.longestStart;
+      $scope.longestDur = metrics.longestDur;
+      $scope.cqFirVP = metrics.cqFirVP;
+      $scope.cqSecVP = metrics.cqSecVP;
+      $scope.latency = metrics.latency;
+      // etc.
 
-    $scope.yaw= metrics.yaw.toFixed(2);
-    $scope.pitch = metrics.pitch.toFixed(2);
-    $scope.trackID = metrics.trackID;
-    $scope.segNr = metrics.segNr;
-    $scope.fovH = metrics.fovH;
-    $scope.fovV = metrics.fovV;
-    $scope.displayRes = metrics.displayRes;
-    $scope.displayHz = metrics.displayHz;
-    $scope.longestTr = metrics.longestTr;
-    $scope.longestStart = metrics.longestStart;
-    $scope.longestDur = metrics.longestDur;
-    $scope.cqFirVP = metrics.cqFirVP;
-    $scope.cqSecVP = metrics.cqSecVP;
-    $scope.latency = metrics.latency;
-    // etc.
+      // now put data to chart
+      var diff = $scope.chartData.getNumberOfRows() - $scope.chartWindowSize;
+      if(diff > 0){
+        $scope.chartData.removeRows(0, diff);
+      }
+      $scope.chartData.addRow([ Date.now() - $scope.loadTimestamp, parseInt($scope.yaw), parseInt($scope.pitch)]);
+      $scope.drawChart();
 
-    // now put data to chart
-    var diff = $scope.chartData.getNumberOfRows() - $scope.chartWindowSize;
-    if(diff > 0){
-      $scope.chartData.removeRows(0, diff);
+      // schedule next metrics pulling
+      setTimeout(function () {
+        $scope.$apply(function(){
+          updateMetrics();
+        })
+      }, $scope.metricsInterval);
+
     }
-    $scope.chartData.addRow([ Date.now() - $scope.loadTimestamp, parseInt($scope.yaw), parseInt($scope.pitch)]);
-    $scope.drawChart();
-
-    // schedule next metrics pulling
-    setTimeout(function () {
-      $scope.$apply(function(){
-        updateMetrics();
-      })
-    }, $scope.metricsInterval);
+    
   }
 
   $scope.initChartData = function(){

@@ -76,6 +76,7 @@ function OMAFPlayer () {
     this.isEnterFullscreen = false;
     this.isFirstsegment = true;
     this.isPushChangeVP = false;
+    this.isMetricsDebug = false;
 
     this.MP = null; // Manifest Parser
     this.ME = null; // Media Engine
@@ -140,9 +141,16 @@ OMAFPlayer.prototype.getVersion = function(){
     return this.version;
 }
 
-OMAFPlayer.prototype.setRenderDebugInfo = function(flag){ 
+OMAFPlayer.prototype.setRenderDebugInfo = function(flag){
     if(this.RE){
-        this.RE.setDebug(flag);
+        this.RE.setRenderDebug(flag);
+    }
+}
+
+OMAFPlayer.prototype.setMetricsDebugInfo = function(flag){ 
+    this.isMetricsDebug = flag ;
+    if(this.RE){
+        this.RE.setMetricsDebug(flag);
     }
 }
 
@@ -804,7 +812,7 @@ OMAFPlayer.prototype.getMetrics = function(){
         var pos = this.RE.getOMAFPosition();
         metrics["yaw"] = THREE.Math.radToDeg(pos.phi);
         metrics["pitch"] = THREE.Math.radToDeg(pos.theta);
-
+        
         var hz = Math.round(self.RE.getHZ());
         if(self.displayHZ === 0 || self.displayHZ !== hz){
             self.displayHZ = hz;
@@ -820,22 +828,22 @@ OMAFPlayer.prototype.getMetrics = function(){
         if (self.MT.getRenderedViewportList()){
             metrics["longestTr"] = self.MT.getRenderedViewportList().viewport.viewpoint_id;
             metrics["longestStart"] = self.milliToTime(self.MT.getRenderedViewportList().startTime);
-            metrics["longestDur"] = self.MT.getRenderedViewportList().duration;
+            metrics["longestDur"] = self.MT.getRenderedViewportList().duration + "ms";
         }else{
             metrics["longestTr"] = 0;
             metrics["longestStart"] = 0;
-            metrics["longestDur"] = 0;
+            metrics["longestDur"] = 0 + "ms";
         }
         if (self.MT.getCQViewportSwitchingLatencyList()){
             metrics["cqFirVP"] = "y:" + parseInt(self.MT.getCQViewportSwitchingLatencyList().firstViewport.centre_azimuth / 65536)
                                  + " p:" + parseInt(self.MT.getCQViewportSwitchingLatencyList().firstViewport.centre_elevation / 65536);
             metrics["cqSecVP"] = "y:" + parseInt(self.MT.getCQViewportSwitchingLatencyList().secondViewport.centre_azimuth / 65536)
                                 + " p:" + parseInt(self.MT.getCQViewportSwitchingLatencyList().secondViewport.centre_elevation / 65536);
-            metrics["latency"] = self.MT.getCQViewportSwitchingLatencyList().latency;
+            metrics["latency"] = self.MT.getCQViewportSwitchingLatencyList().latency + "ms";
         }else{
             metrics["cqFirVP"] = 0;
             metrics["cqSecVP"] = 0;
-            metrics["latency"] = 0;
+            metrics["latency"] = 0 + "ms";
         }
        
     } else{
@@ -847,10 +855,10 @@ OMAFPlayer.prototype.getMetrics = function(){
         metrics["displayHz"] = 0;
         metrics["longestTr"] = 0;
         metrics["longestStart"] = 0;
-        metrics["longestDur"] = 0;
+        metrics["longestDur"] = 0 + "ms";
         metrics["cqFirVP"] = 0;
         metrics["cqSecVP"] = 0;
-        metrics["latency"] = 0;
+        metrics["latency"] = 0 + "ms";
     }
     metrics["trackID"] = this.trackID;
     metrics["segNr"] = this.segmentNr;

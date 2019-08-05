@@ -103,6 +103,7 @@ function Renderer() {
   this.lastPerformance  = 0;
 
   this.renderDebug = false;     // if set to true, render some additional debug info on top
+  this.metricsDebug = false;
   this.debugScene = null;
   this.stats = null;
 
@@ -169,8 +170,12 @@ Renderer.prototype.getVertexShader = function(){
   `;
 }
 
-Renderer.prototype.setDebug = function(flag){
+Renderer.prototype.setRenderDebug = function(flag){
   this.renderDebug = flag;
+}
+
+Renderer.prototype.setMetricsDebug = function(flag){
+  this.metricsDebug = flag;
 }
 
 // projection_type: 0-ERP, 1-CMP
@@ -622,11 +627,15 @@ Renderer.prototype.readyToChangeTrack = function (isSub) {
 
 Renderer.prototype.animate = function () {
   var self = this;
-
-  this.stats.begin();
-  this.renderVideo();
-  this.stats.end();
-  this.onCheckUserViewport();
+  if(this.metricsDebug){
+    this.stats.begin();
+    this.renderVideo();
+    this.stats.end();
+    this.onCheckUserViewport();
+  }else{
+    this.renderVideo();
+  }
+  
 
   this.aniReq = window.webkitRequestAnimationFrame(function () { self.animate(); });
   

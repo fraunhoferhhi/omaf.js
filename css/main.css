@@ -209,7 +209,6 @@ video::-webkit-media-controls-fullscreen-button {
     display: none;
 }
 
-.scrollClass {
-    height:400px;
-    overflow-y: scroll;
+.form-check-input {
+    margin-top: 13px;
 }
