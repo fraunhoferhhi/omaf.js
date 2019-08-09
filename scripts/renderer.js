@@ -627,6 +627,7 @@ Renderer.prototype.readyToChangeTrack = function (isSub) {
 
 Renderer.prototype.animate = function () {
   var self = this;
+  
   if(this.metricsDebug){
     this.stats.begin();
     this.renderVideo();

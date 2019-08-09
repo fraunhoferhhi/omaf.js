@@ -186,8 +186,10 @@ app.controller('OMAFController', function ($scope, manifests){
   // chart js stuff
   google.charts.load('current', {packages: ['corechart', 'line']});
   google.charts.setOnLoadCallback(function(){
-    $scope.chart = new google.visualization.LineChart(document.getElementById('chart_div'));
-    $scope.chartData = new google.visualization.DataTable();
+    $scope.chartUserView = new google.visualization.LineChart(document.getElementById('chart_userView_div'));
+    $scope.chartLatency = new google.visualization.LineChart(document.getElementById('chart_latency_div'));
+    $scope.chartUserViewData = new google.visualization.DataTable();
+    $scope.chartLatencyData = new google.visualization.DataTable();
     $scope.initChartData();
     $scope.drawChart();
   });
@@ -204,6 +206,7 @@ app.controller('OMAFController', function ($scope, manifests){
   // start-up values for metrics
   $scope.yaw = 0;
   $scope.pitch = 0;
+  $scope.mediaTime = 0;
   $scope.trackID = 0;
   $scope.segNr = 0;
   $scope.fovH = 0;
@@ -234,12 +237,14 @@ app.controller('OMAFController', function ($scope, manifests){
     }
     $scope.player.reset();
 
-    $scope.player.init($scope.video, $scope.subVideo, $scope.renderEle, $scope.subRenderEle, $scope.cameraControlElement, $scope.bufferLimit);
+    $scope.player.init($scope.video, $scope.subVideo, $scope.renderEle, $scope.subRenderEle, $scope.cameraControlElement, $scope.bufferLimit, $scope.chartUserViewData ,$scope.chartLatencyData );
     $scope.player.start($scope.selectedMPD.url);
 
     $scope.loadTimestamp = Date.now();
-    var rowCnt = $scope.chartData.getNumberOfRows();
-    $scope.chartData.removeRows(0, rowCnt);
+    var rowUserViewCnt = $scope.chartUserViewData.getNumberOfRows();
+    $scope.chartUserViewData.removeRows(0, rowUserViewCnt);
+    var rowLatencyCnt = $scope.chartLatencyData.getNumberOfRows();
+    $scope.chartLatencyData.removeRows(0, rowLatencyCnt);
   };
 
   $scope.doFullscreen = function () {
@@ -267,6 +272,7 @@ app.controller('OMAFController', function ($scope, manifests){
       var metrics = $scope.player.getMetrics();
       $scope.yaw= metrics.yaw.toFixed(2);
       $scope.pitch = metrics.pitch.toFixed(2);
+      $scope.mediaTime = metrics.mediaTime;
       $scope.trackID = metrics.trackID;
       $scope.segNr = metrics.segNr;
       $scope.fovH = metrics.fovH;
@@ -282,11 +288,16 @@ app.controller('OMAFController', function ($scope, manifests){
       // etc.
 
       // now put data to chart
-      var diff = $scope.chartData.getNumberOfRows() - $scope.chartWindowSize;
-      if(diff > 0){
-        $scope.chartData.removeRows(0, diff);
+      var diffUser = $scope.chartUserViewData.getNumberOfRows() - $scope.chartWindowSize;
+      if(diffUser > 0){
+        $scope.chartUserViewData.removeRows(0, diffUser);
       }
-      $scope.chartData.addRow([ Date.now() - $scope.loadTimestamp, parseInt($scope.yaw), parseInt($scope.pitch)]);
+      var diffLatency = $scope.chartLatencyData.getNumberOfRows() - $scope.chartWindowSize;
+      if(diffLatency > 0){
+        $scope.chartLatencyData.removeRows(0, diffLatency);
+      }
+      $scope.chartUserViewData.addRow([ parseInt($scope.mediaTime), parseInt($scope.yaw), parseInt($scope.pitch)]);
+      $scope.chartLatencyData.addRow([ parseInt($scope.mediaTime), parseInt($scope.latency)]);
       $scope.drawChart();
 
       // schedule next metrics pulling
@@ -301,14 +312,19 @@ app.controller('OMAFController', function ($scope, manifests){
   }
 
   $scope.initChartData = function(){
-    $scope.chartData.addColumn('number', 'Time');
-    $scope.chartData.addColumn('number', 'Yaw');
-    $scope.chartData.addColumn('number', 'Pitch');
+    $scope.chartUserViewData.addColumn('number', 'Time');
+    $scope.chartUserViewData.addColumn('number', 'Yaw');
+    $scope.chartUserViewData.addColumn('number', 'Pitch');
+
+    $scope.chartLatencyData.addColumn('number', 'Time');
+    $scope.chartLatencyData.addColumn('number', 'Latency');
   }
 
   $scope.drawChart = function(){
-    if(!$scope.chart || !$scope.chartData) { return; }
-    $scope.chart.draw($scope.chartData, { hAxis: { title: 'Time [ms]'}, vAxis: { title: 'Angle'}});
+    if(!$scope.chartUserView || !$scope.chartUserViewData) { return; }
+    $scope.chartUserView.draw($scope.chartUserViewData, { hAxis: { title: 'MediaTime [ms]'}, vAxis: { title: 'Angle'}});
+    if(!$scope.chartLatency || !$scope.chartLatencyData) { return; }
+    $scope.chartLatency.draw($scope.chartLatencyData, { hAxis: { title: 'MediaTime [ms]'}, vAxis: { title: 'Latency'}});
   }
 });
 

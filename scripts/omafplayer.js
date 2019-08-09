@@ -76,6 +76,7 @@ function OMAFPlayer () {
     this.isEnterFullscreen = false;
     this.isFirstsegment = true;
     this.isPushChangeVP = false;
+    this.isRenderDebug  = false ;
     this.isMetricsDebug = false;
 
     this.MP = null; // Manifest Parser
@@ -112,6 +113,8 @@ function OMAFPlayer () {
     this.userViewTrackID        = 0;
     this.userChangeVPList       = [];
     this.userChangeVPID         = 0;
+    this.chartUserViewData      = null;
+    this.chartLatencyData       = null;
     
 
     this.vidElement = null;
@@ -142,6 +145,7 @@ OMAFPlayer.prototype.getVersion = function(){
 }
 
 OMAFPlayer.prototype.setRenderDebugInfo = function(flag){
+    this.isRenderDebug = flag;
     if(this.RE){
         this.RE.setRenderDebug(flag);
     }
@@ -158,7 +162,7 @@ OMAFPlayer.prototype.setTrackSwitch = function(flag){
     this.isTrackSwitch = flag;
 }
 
-OMAFPlayer.prototype.init = function(vidElement, subVidElement, renderElement, subRenderElement, cameraElement, bufferLimit){
+OMAFPlayer.prototype.init = function(vidElement, subVidElement, renderElement, subRenderElement, cameraElement, bufferLimit, chartUserViewData, chartLatencyData){
     if (this.initialized){
         Log.warn("Player", "OMAF Player was already initialized.");
         return;
@@ -179,6 +183,8 @@ OMAFPlayer.prototype.init = function(vidElement, subVidElement, renderElement, s
 
     this.vidElement = vidElement;
     this.subVidElement = subVidElement;
+    this.chartUserViewData = chartUserViewData;
+    this.chartLatencyData  = chartLatencyData;
 
     this.renderElement = renderElement;
     this.subRenderElement = subRenderElement;
@@ -274,6 +280,10 @@ OMAFPlayer.prototype.init = function(vidElement, subVidElement, renderElement, s
             clearInterval(self.pauseReq);
             self.userChangeVPList   = [];
             self.userChangeVPID = 0;
+            var rowUserViewCnt = self.chartUserViewData.getNumberOfRows();
+            self.chartUserViewData.removeRows(0, rowUserViewCnt);
+            var rowLatencyCnt = self.chartLatencyData.getNumberOfRows();
+            self.chartLatencyData.removeRows(0, rowLatencyCnt);
             //clearInterval(self.metricsReq);
             self.vidElement.play();
             self.RE.mainRenderVideo();
@@ -397,7 +407,9 @@ OMAFPlayer.prototype.init = function(vidElement, subVidElement, renderElement, s
         self.fovH = this.getFovH();
         self.fovV = this.getFovV();
         self.MT.init(self.fovH,self.fovV,resolution);
-        
+        this.setRenderDebug(self.isRenderDebug);
+        this.setMetricsDebug(self.isMetricsDebug);
+    
         self.loadNextSegment(); // load first segment after init
         
     }
@@ -458,6 +470,7 @@ OMAFPlayer.prototype.init = function(vidElement, subVidElement, renderElement, s
             var latency = self.SE.getCurrentTime() - switchingTime;
             var reason = [resonEnum.SEGMENT_DURATION, resonEnum.BUFFER_FULLNESS];
             if(firstVP){
+                console.log(firstVP);
                 self.MT.updateCQViewportSwitchingLatency(new CQViewportSwitchingLatency(firstVP, secondVP, 1, 1, switchingTime, latency, reason));
             }
             self.requestNextSegQ.dequeue();
@@ -812,7 +825,7 @@ OMAFPlayer.prototype.getMetrics = function(){
         var pos = this.RE.getOMAFPosition();
         metrics["yaw"] = THREE.Math.radToDeg(pos.phi);
         metrics["pitch"] = THREE.Math.radToDeg(pos.theta);
-        
+        metrics["mediaTime"] = parseInt(self.SE.getCurrentTime());
         var hz = Math.round(self.RE.getHZ());
         if(self.displayHZ === 0 || self.displayHZ !== hz){
             self.displayHZ = hz;
@@ -849,6 +862,7 @@ OMAFPlayer.prototype.getMetrics = function(){
     } else{
         metrics["yaw"] = this.yaw;
         metrics["pitch"] = this.pitch;
+        metrics["mediaTime"] = 0;
         metrics["fovH"] = 0;
         metrics["fovV"] = 0;
         metrics["displayRes"] = 0;

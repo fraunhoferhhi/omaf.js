@@ -206,13 +206,13 @@
                     <div class="tab-pane fade" id="nav-metrics" role="tabpanel" aria-labelledby="nav-metrics-tab">
                     
                         <div class="form-group row">
-                            <label class="col-5 col-form-label text-primary" title="Current segment number">FovH:</label>
+                            <label class="col-5 col-form-label text-primary" title="Current segment number">FovHor:</label>
                             <div class="col-7">
                                 <span class="form-control">{{fovH}}</span>
                             </div>
                         </div>
                         <div class="form-group row">
-                            <label class="col-5 col-form-label text-primary" title="Current segment number">FovV:</label>
+                            <label class="col-5 col-form-label text-primary" title="Current segment number">FovVer:</label>
                             <div class="col-7">
                                 <span class="form-control">{{fovV}}</span>
                             </div>
@@ -230,7 +230,7 @@
                             </div>
                         </div>
                         <div class="form-group row">
-                            <label class="col-5 col-form-label text-primary" title="Current segment number">LongestTr:</label>
+                            <label class="col-5 col-form-label text-primary" title="Current segment number">LongestTrID:</label>
                             <div class="col-7">
                                 <span class="form-control">{{longestTr}}</span>
                             </div>
@@ -272,7 +272,10 @@
 
         <!-- CHARTING -->
         <div class="col-md-12 chart">
-            <div id="chart_div"></div>
+            <div id="chart_userView_div"></div>
+        </div>
+        <div class="col-md-12 chart">
+            <div id="chart_latency_div"></div>
         </div>
     </div>
 
