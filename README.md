@@ -13,7 +13,7 @@ This repository contains the **proof-of-concept** implementation of the most adv
 Further information about the individual modules can be found below.
 
 This implementation was also submitted to the demo track of ACM Multimedia Systems Conference [ACM MMSys'19](http://www.mmsys2019.org/participation/demo-track/) and has been accepted to
-appear in the conference. The submitted version of the paper can be downloaded from [here](https://arxiv.org/pdf/1903.02971.pdf). Please cite our paper if you use something from this repository:
+appear in the conference. The paper can be downloaded from [ACM digital library](https://dl.acm.org/doi/pdf/10.1145/3304109.3323835) or [arxiv](https://arxiv.org/pdf/1903.02971.pdf). Please cite our paper if you use something from this repository:
 
     @inproceedings{Podborski:2019:HMP:3304109.3323835,
         author = {Podborski, Dimitri and Son, Jangwoo and Bhullar, Gurdeep Singh and Skupin, Robert and Sanchez, Yago and Hellge, Cornelius and Schierl, Thomas},
