@@ -123,12 +123,12 @@ The binaries for content creation tools are available for macOS and linux.
 ## 3. Test Content
 
 One short encoded and packaged video sequence is also provided for testing. Thanks to Ericsson for permission to publish the data in OMAF form.
-The test sequence is available for download at our [datacloud server](https://datacloud.hhi.fraunhofer.de/nextcloud/s/38tHKMQTogibTKM) with all the content zipped into a single `Garage.zip` file. 
+The test sequence is available for download at our [datacloud server](https://datacloud.hhi.fraunhofer.de/s/yojnrKZqWmmWCwy) with all the content zipped into a single `Garage.zip` file. 
 
-It contains a `dash` folder with a DASH manifest file and media segments available in 2 different resolutions (each encoded with 3 different quality levels) which can be used together with the JavaScript player.
-In addition, it includes a single `Garage_qp27.mp4` file with 72 video tracks (24 high resolution tiles, 24 low resolution tiles and 24 extractor tracks) which can be used for local playback testing using stand-alone tools such as [hevc_extractors app](https://github.com/podborski/isobmff/tree/extractorFix).
+It contains a `dash` folder with a DASH manifest file and media segments available in 2 different resolutions (each encoded with 4 different quality levels) which can be used together with the JavaScript player.
+In addition, it includes a single `Garage_qp28.mp4` file with 72 video tracks (24 high resolution tiles, 24 low resolution tiles and 24 extractor tracks) which can be used for local playback testing using stand-alone tools such as [hevc_extractors app](https://github.com/podborski/isobmff/tree/extractorFix).
 
-In case of any problems with the datacloud link please contact `dimitri.podborski[at]hhi.fraunhofer.de`
+In case of any problems with the datacloud link please contact `jangwoo.son[at]hhi-extern.fraunhofer.de`
 
 ## 4. Usage Guidelines
 
