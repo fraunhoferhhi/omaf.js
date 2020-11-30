@@ -157,7 +157,7 @@ Let's download all data first. Let's say the root directory of our HTTP server w
 
     mkdir ~/omafserver && cd ~/omafserver
     git clone https://github.com/fraunhoferhhi/omaf.js.git
-    curl https://datacloud.hhi.fraunhofer.de/nextcloud/s/38tHKMQTogibTKM/download -o content.zip
+    curl https://datacloud.hhi.fraunhofer.de/s/yojnrKZqWmmWCwy/download -o content.zip
     unzip -q content.zip
 
 Now everything should be located in `~/omafserver` and we have to configure the HTTP server. By default `nginx` loads all sites defined in `/usr/local/etc/nginx/servers/.`, thus, let us create a simple configuration `omafserver.conf`:
