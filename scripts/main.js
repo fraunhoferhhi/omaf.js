@@ -162,14 +162,6 @@ app.controller('OMAFController', function ($scope, manifests){
 
   // let the use know which version we are using now
   $scope.version = $scope.player.getVersion();
-  
-  $scope.selectedMPD = { 
-    url: 'please select DASH Manifest (MPD) or provide it\'s URL in this field'
-  };
-
-  manifests.query(function (data) { $scope.availableMPDs = data.mpds; });
-
-  $scope.setMPD = function (item) { $scope.selectedMPD = JSON.parse(JSON.stringify(item)); };
 
   // chart js stuff
   google.charts.load('current', {packages: ['corechart', 'line']});
@@ -200,8 +192,7 @@ app.controller('OMAFController', function ($scope, manifests){
   };
 
   $scope.doLoad = function () {
-    Log.info("OMAFController", "Load MPD");
-    Log.warn("OMAFController",$scope.selectedMPD.index)
+    let filename = document.getElementById("filename")?.dataset?.filename
     var span = document.getElementById("iconPlayPause");
     if (span !== null && $scope.player.initialized) {
       if($scope.player.isPlaying){
@@ -213,7 +204,7 @@ app.controller('OMAFController', function ($scope, manifests){
     $scope.player.reset();
 
     $scope.player.init($scope.video, $scope.subVideo, $scope.renderEle, $scope.subRenderEle, $scope.cameraControlElement, $scope.bufferLimit);
-    $scope.player.start($scope.selectedMPD.url);
+    $scope.player.start(filename);
 
     $scope.loadTimestamp = Date.now();
     var rowCnt = $scope.chartData.getNumberOfRows();
